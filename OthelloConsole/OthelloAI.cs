@@ -4,14 +4,13 @@ using System.Collections.Generic;
 public class OthelloAI
 {
     private int _depth = 0; // 探索の深さ
-    private int _nodeCount = 0;
+    public bool _isDebug = false; // デバッグログ出力フラグ
     private int _player;
     private int _AI;
     private const int BOARD_SIZE = 8;
 
     public (int x, int y) AI(List<(int x, int y)> _validMoves, int[,] _board, int player, AIStrength _AIStrength)
     {
-        _nodeCount = 0;
         _player = player;
         _AI = (player == 1) ? 2 : 1;
 
@@ -28,10 +27,9 @@ public class OthelloAI
 
         foreach (var move in _validMoves)
         {
-            _nodeCount++;
             int[,] newBoard = CopyBoard(_board);
             AIPlacePiece(move.x, move.y, newBoard, _AI);
-
+            if (_isDebug) Console.WriteLine($"置き場所候補： ({move.x},{move.y}) の評価を開始します。");
             int score = -Negamax(newBoard, _depth - 1, _player, int.MinValue + 1, int.MaxValue - 1);
 
             if (score > bestScore)
@@ -41,16 +39,18 @@ public class OthelloAI
             }
         }
 
-        Console.Write($"探索ノード数: {_nodeCount}");
         return bestMove;
     }
 
     private int Negamax(int[,] board, int depth, int player, int alpha, int beta, int level = 0)
     {
-        _nodeCount++;
+        string indent = new string(' ', level * 4); // 再帰の深さに応じてインデント
+        if (_isDebug) Console.WriteLine($"{indent}▶ 深さ {depth} 開始 (プレイヤー: {player})");
+
         if (depth == 0)
         {
             int eval = EvaluatePosition(board);
+            if (_isDebug) Console.WriteLine($"{indent}  └ 深さ0 評価値: {eval} (プレイヤー: {player})");
             return eval;
         }
 
@@ -58,6 +58,7 @@ public class OthelloAI
         if (validMoves.Count == 0)
         {
             int eval = EvaluatePosition(board);
+            if (_isDebug) Console.WriteLine($"{indent}  └ 打てる手なし → 評価値: {eval}");
             return eval;
         }
 
@@ -67,22 +68,27 @@ public class OthelloAI
         foreach (var move in validMoves)
         {
             int[,] newBoard = AIPlacePiece(move.x, move.y, board, player);
+            if (_isDebug) Console.WriteLine($"{indent}  手 ({move.x},{move.y}) を試します (プレイヤー: {player})");
 
             int eval = -Negamax(newBoard, depth - 1, opponent, -beta, -alpha, level + 1);
 
+            if (_isDebug) Console.WriteLine($"{indent}  ← 手 ({move.x},{move.y}) 結果: {eval}");
 
             if (eval > maxEval)
             {
                 maxEval = eval;
+                if (_isDebug) Console.WriteLine($"{indent}     ↳ 現在のベスト更新: {maxEval}");
             }
 
             alpha = Math.Max(alpha, eval);
             if (alpha >= beta)
             {
+                if (_isDebug) Console.WriteLine($"{indent}  ✂ 枝刈り発生（alpha={alpha}, beta={beta}）");
                 break;
             }
         }
 
+        if (_isDebug) Console.WriteLine($"{indent}◀ 深さ {depth} 終了: 戻り値 = {maxEval}");
         return maxEval;
     }
 
