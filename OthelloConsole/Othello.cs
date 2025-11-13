@@ -23,6 +23,7 @@ public class Othello
     private int _enemyFrameConter = 2;
     private List<(int x, int y)> _validMoves = new List<(int x, int y)>();
     public GameMode _gameMode;
+    public AIStrength _AIStrength = AIStrength.normal;
     public enum GameMode
     {
         AIvsPlayer,
@@ -42,7 +43,7 @@ public class Othello
         {
             case "1":
                 Console.WriteLine("AI対戦モードは現在未実装のため。2人対戦モードに進みます。");
-                game._gameMode = GameMode.PlayervsPlayer;
+                game._gameMode = GameMode.AIvsPlayer;
                 break;
             case "2":
                 Console.WriteLine("2人対戦モードを選択しました。");
@@ -73,9 +74,9 @@ public class Othello
             if (_gameMode == GameMode.AIvsPlayer && _turn == 2)
             {
                 AIturn();
-                _turn = 1;
-                _turnConter++;
-                continue;
+                // _turn = 1;
+                // _turnConter++;
+                // continue;
             }
 
 
@@ -127,6 +128,13 @@ public class Othello
     /// </summary>
     void AIturn()
     {
+
+        OthelloAI ai = new OthelloAI();
+        Console.WriteLine($"この盤面の評価値{ai.Evaluationfunction(tiles, 1)}");
+
+        // var (x, y) = ai.AI(_validMoves, tiles, 1, _AIStrength);
+        // Console.WriteLine($"AIが {x}{y} に駒を置きました。");
+        // PlacePiece(x, y);
 
     }
 
