@@ -1,5 +1,7 @@
-/bin/
-/obj/
+# Build Folders
+bin/
+obj/
+
+# VS / VS Code
 .vs/
 .vscode/
-
