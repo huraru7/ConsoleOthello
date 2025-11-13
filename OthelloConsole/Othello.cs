@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Tasks;
 
 public class Othello
 {
@@ -33,7 +35,7 @@ public class Othello
     /// <summary>
     /// スタート処理
     /// </summary>
-    public static void Main()
+    public static async Task Main()
     {
         Console.WriteLine("オセロへようこそ！");
         Console.WriteLine("モード選択:AI対戦(1) 2人対戦(2)");
@@ -58,27 +60,18 @@ public class Othello
         Console.WriteLine("Enterキーを押してゲームを開始...");
         Console.ReadLine();
         Console.Clear();
-        game.RunGame();
+        await game.RunGame();
     }
 
     /// <summary>
     /// ゲームを実行する中枢
     /// </summary>
-    void RunGame()
+    async Task RunGame()
     {
         while (true)
         {
             _validMoves = InstallationArea();
             if (GameChecker()) return;
-
-            if (_gameMode == GameMode.AIvsPlayer && _turn == 2)
-            {
-                AIturn();
-                // _turn = 1;
-                // _turnConter++;
-                // continue;
-            }
-
 
             Console.WriteLine(ConsoleWriteBoard());
             Console.Write("置ける場所:");
@@ -100,9 +93,29 @@ public class Othello
                 Console.WriteLine();
             }
 
-            Console.WriteLine("置く場所を選んでください (例: 34 は 縦3番 横4番に置く)");
-            string input = Console.ReadLine() ?? "";
-            if (input == "end") return;
+            string input;
+            if (_gameMode == GameMode.AIvsPlayer && _turn == 2)
+            {
+                Console.WriteLine("=======================================================");
+                OthelloAI ai = new OthelloAI();
+                (int x, int y) = ai.AI(_validMoves, tiles, 1, _AIStrength);
+                input = $"{x}{y}";
+
+                await Task.Delay(300); // 1秒待機
+            }
+            else
+            {
+                Console.WriteLine("置く場所を選んでください (例: 34 は 縦3番 横4番に置く)");
+                input = Console.ReadLine() ?? "";
+            }
+
+            if (input == "end")
+            {
+                Console.Clear();
+                Console.WriteLine("ゲームを終了しました");
+                return;
+            }
+
 
             if (!TryParseMove(input, out int row, out int col) || !_validMoves.Any(m => m.x == row && m.y == col))
             {
@@ -114,28 +127,20 @@ public class Othello
 
             Console.Clear();
 
-            Console.WriteLine($"入力を解析しました: {row}, {col}");
+            if (_gameMode == GameMode.AIvsPlayer && _turn == 2)
+            {
+                Console.WriteLine($"AIの選択した手:{row}, {col}");
+            }
+            else
+            {
+                Console.WriteLine($"入力を解析しました: {row}, {col}");
+            }
             Console.WriteLine("=======================================================");
             PlacePiece(row, col);
 
             _turn = _turn == 1 ? 2 : 1;//turn変更
             _turnConter++;
         }
-    }
-
-    /// <summary>
-    /// AIのターン処理を行います
-    /// </summary>
-    void AIturn()
-    {
-
-        OthelloAI ai = new OthelloAI();
-        Console.WriteLine($"この盤面の評価値{ai.Evaluationfunction(tiles, 1)}");
-
-        // var (x, y) = ai.AI(_validMoves, tiles, 1, _AIStrength);
-        // Console.WriteLine($"AIが {x}{y} に駒を置きました。");
-        // PlacePiece(x, y);
-
     }
 
     /// <summary>
@@ -211,6 +216,8 @@ public class Othello
 
         if (!hasEmpty)
         {
+            ConsoleWriteBoard();
+            Console.WriteLine("=======================================================");
             Console.WriteLine("ゲーム終了：盤面に空きがありません。");
             if (_enemyFrameConter > _playerFrameConter)
                 Console.WriteLine("敵(黒)の勝ち！");

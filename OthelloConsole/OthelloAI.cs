@@ -2,12 +2,9 @@ using System;
 
 public class OthelloAI
 {
-    int depth = 0;//探索の深さ
-
+    // int depth = 0;//探索の深さ
     private int _player;
-    private int _opponent;
-
-
+    private int _AI;
 
     /// <summary>
     /// AIの手を決定するメソッド
@@ -20,7 +17,8 @@ public class OthelloAI
     public (int x, int y) AI(List<(int x, int y)> _validMoves, int[,] _board, int player, AIStrength _AIStrength)
     {
         _player = player;
-        _opponent = (player == 1) ? 2 : 1;
+        _AI = (player == 1) ? 2 : 1;
+        Console.WriteLine($"AIは{_AI} playerは{_player}");
 
         switch (_AIStrength)
         {
@@ -38,127 +36,107 @@ public class OthelloAI
                 break;
         }
 
+        int bestScore = int.MinValue;
+        (int x, int y) bestMove = (0, 0);
+        Console.WriteLine($"合法手の数: {_validMoves.Count}");
+        Console.WriteLine();
+        foreach (var result in _validMoves)
+        {
+            var futureBoard = AIPlacePiece(result.x, result.y, _board, _AI);
+            int score = EvaluatePosition(futureBoard);
 
-
-        return (0, 0); // 仮の戻り値
+            Console.WriteLine($"配置{result.x},{result.y}に置くと評価値は{score}になります。");
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestMove = (result.x, result.y);
+            }
+        }
+        return bestMove;
     }
 
-    public int Evaluationfunction(int[,] board, int player)
+    private int[,] AIPlacePiece(int x, int y, int[,] _board, int _turn)
     {
-        //仮のやつ
-        _player = player;
-        _opponent = (player == 1) ? 2 : 1;
+        int[,] copy = (int[,])_board.Clone();
 
-        int positional = EvaluatePosition(board);//位置の評価
-        Console.WriteLine($"位置の評価値:{positional}");
-        int mobility = TileCountEvaluation(board);//駒数の評価
-        Console.WriteLine($"駒数の評価値:{mobility}");
-        int stability = EvaluateStability(board);//安定石の評価
-        Console.WriteLine($"安定石の評価値:{stability}");
+        x -= 1;
+        y -= 1;
+        copy[x, y] = _turn;
 
-        int score =
-            positional * 1 +
-            mobility * 10 +
-            stability * 50
-            ;
+        int[] dx = { -1, 1, 0, 0, -1, -1, 1, 1 };
+        int[] dy = { 0, 0, -1, 1, -1, 1, -1, 1 };
 
-        return score;
+        for (int direction = 0; direction < dx.Length; direction++)
+        {
+            List<(int x, int y)> Candidates = new List<(int x, int y)>();
+
+            int nx = x + dx[direction];
+            int ny = y + dy[direction];
+
+            while (nx >= 0 && nx < 8 && ny >= 0 && ny < 8)
+            {
+                if (copy[nx, ny] == (_turn == 1 ? 2 : 1)) // 相手の駒
+                {
+                    Candidates.Add((nx, ny));
+                }
+                else if (copy[nx, ny] == (_turn == 1 ? 1 : 2)) // 自分の駒
+                {
+                    if (Candidates.Count > 0)
+                    {
+                        foreach (var candidate in Candidates)
+                        {
+                            copy[candidate.x, candidate.y] = _turn;
+                        }
+                    }
+                    break;
+                }
+                else
+                {
+                    break;
+                }
+
+                nx += dx[direction];
+                ny += dy[direction];
+            }
+        }
+        return copy;
     }
+
+
     int EvaluatePosition(int[,] board)
     {
         int[,] scoreSheet = new int[,]
         {
-            {120,-20, 20,  5,  5, 20,-20,120},
-            {-20,-40,-5, -5, -5, -5,-40,-20},
-            {20, -5, 15,  3,  3, 15, -5, 20},
-            {5,  -5,  3,  0,  0,  3, -5,  5},
-            {5,  -5,  3,  0,  0,  3, -5,  5},
-            {20, -5, 15,  3,  3, 15, -5, 20},
-            {-20,-40,-5, -5, -5, -5,-40,-20},
-            {120,-20, 20,  5,  5, 20,-20,120},
+            {  30, -12,   0,  -1,  -1,   0, -12,  30},
+            { -12, -15,  -3,  -3,  -3,  -3, -15, -12},
+            {   0,  -3,   0,  -1,  -1,   0,  -3,   0},
+            {  -1,  -3,  -1,  -1,  -1,  -1,  -3,  -1},
+            {  -1,  -3,  -1,  -1,  -1,  -1,  -3,  -1},
+            {   0,  -3,   0,  -1,  -1,   0,  -3,   0},
+            { -12, -15,  -3,  -3,  -3,  -3, -15, -12},
+            {  30, -12,   0,  -1,  -1,   0, -12,  30},
         };
 
-        int score = 0;
+        int playerscore = 0;
+        int AIscore = 0;
+        int totalscore = 0;
         for (int y = 0; y < 8; y++)
         {
             for (int x = 0; x < 8; x++)
             {
                 if (board[y, x] == _player)
                 {
-                    score += scoreSheet[y, x];
+                    playerscore += scoreSheet[y, x];
                 }
-                else if (board[y, x] == _opponent)
+                else if (board[y, x] == _AI)
                 {
-                    score -= scoreSheet[y, x];
+                    AIscore += scoreSheet[y, x];
                 }
             }
         }
-        return score;
+        totalscore = AIscore - playerscore;
+        return totalscore;
     }
-
-    private int EvaluateStability(int[,] board)
-    {
-        return CountStableDiscs(board, _player) - CountStableDiscs(board, _opponent);
-    }
-
-    /// <summary>
-    /// 安定した石を調査します
-    /// </summary>
-    /// <param name="board">現在の盤面</param>
-    /// <returns>安定石の個数</returns>
-    private int CountStableDiscs(int[,] board, int turn)
-    {
-        int count = 0;
-        // 角の座標
-        int[,] corners = new int[,]
-        {{0,0}, {0,7}, {7,0}, {7,7}};
-
-        for (int i = 0; i < corners.GetLength(0); i++)
-        {
-            int cornerY = corners[i, 0];
-            int cornerX = corners[i, 1];
-
-            if (board[cornerY, cornerX] != turn) continue;
-
-            // 横探索
-            int startX = cornerX;
-            int stepX = (cornerX == 0) ? 1 : -1; // 0なら右、7なら左
-
-            int x = startX;
-            while (x >= 0 && x < 8 && board[cornerY, x] == turn)
-            {
-                count++;
-                x += stepX;
-            }
-
-            // 縦探索
-            int startY = cornerY;
-            int stepY = (cornerY == 0) ? 1 : -1; // 0なら下、7なら上
-
-            int y = startY;
-            while (y >= 0 && y < 8 && board[y, cornerX] == turn)
-            {
-                count++;
-                y += stepY;
-            }
-
-        }
-        return count;
-    }
-
-    private int TileCountEvaluation(int[,] board)
-    {
-        int playerCount = 0, opponentCount = 0;
-        for (int y = 0; y < 8; y++)
-            for (int x = 0; x < 8; x++)
-            {
-                if (board[y, x] == _player) playerCount++;
-                else if (board[y, x] == _opponent) opponentCount++;
-            }
-
-        return playerCount - opponentCount;
-    }
-
 }
 public enum AIStrength
 {
