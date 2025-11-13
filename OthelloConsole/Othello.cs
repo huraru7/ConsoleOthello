@@ -24,8 +24,9 @@ public class Othello
     private int _playerFrameConter = 2;
     private int _enemyFrameConter = 2;
     private List<(int x, int y)> _validMoves = new List<(int x, int y)>();
+    private int _consecutivePassCount = 0; // 連続パス回数のカウント
     public GameMode _gameMode;
-    public AIStrength _AIStrength = AIStrength.normal;
+    public AIStrength _AIStrength;
     public enum GameMode
     {
         AIvsPlayer,
@@ -44,7 +45,7 @@ public class Othello
         switch (input)
         {
             case "1":
-                Console.WriteLine("AI対戦モードは現在未実装のため。2人対戦モードに進みます。");
+                Console.WriteLine("AI対戦モードを選択しました。");
                 game._gameMode = GameMode.AIvsPlayer;
                 break;
             case "2":
@@ -55,6 +56,30 @@ public class Othello
                 Console.WriteLine("無効な入力です。2人対戦モードに進みます。");
                 game._gameMode = GameMode.PlayervsPlayer;
                 break;
+        }
+        if (game._gameMode == GameMode.AIvsPlayer)
+        {
+            Console.WriteLine("AIの強さを選択してください:初心者(1) 普通(2) 上級者(3) プロ(4)");
+            string aiInput = Console.ReadLine() ?? "";
+            switch (aiInput)
+            {
+                case "1":
+                    game._AIStrength = AIStrength.whet;
+                    break;
+                case "2":
+                    game._AIStrength = AIStrength.nuub;
+                    break;
+                case "3":
+                    game._AIStrength = AIStrength.normal;
+                    break;
+                case "4":
+                    game._AIStrength = AIStrength.professional;
+                    break;
+                default:
+                    Console.WriteLine("無効な入力です。普通モードに進みます。");
+                    game._AIStrength = AIStrength.normal;
+                    break;
+            }
         }
 
         Console.WriteLine("Enterキーを押してゲームを開始...");
@@ -80,6 +105,7 @@ public class Othello
                 Console.Clear();
                 Console.WriteLine("置ける場所がありません。ターンをスキップします。");
                 Console.WriteLine("=======================================================");
+                _consecutivePassCount++;
                 _turn = _turn == 1 ? 2 : 1;
                 _turnConter++;
                 continue;
@@ -99,9 +125,10 @@ public class Othello
                 Console.WriteLine("=======================================================");
                 OthelloAI ai = new OthelloAI();
                 (int x, int y) = ai.AI(_validMoves, tiles, 1, _AIStrength);
+                Console.WriteLine($"AIの手{x},{y}を選択しました。");
                 input = $"{x}{y}";
 
-                await Task.Delay(300); // 1秒待機
+                await Task.Delay(3500); // 1秒待機
             }
             else
             {
@@ -137,6 +164,7 @@ public class Othello
             }
             Console.WriteLine("=======================================================");
             PlacePiece(row, col);
+            _consecutivePassCount = 0; // パスをリセット
 
             _turn = _turn == 1 ? 2 : 1;//turn変更
             _turnConter++;
@@ -212,13 +240,22 @@ public class Othello
     /// </summary>
     bool GameChecker()
     {
-        bool hasEmpty = tiles.Cast<int>().Any(t => t == 0);
+        bool hasEmpty;
+        hasEmpty = tiles.Cast<int>().Any(t => t == 0);
+        if (_consecutivePassCount >= 2) hasEmpty = false;
 
         if (!hasEmpty)
         {
             ConsoleWriteBoard();
             Console.WriteLine("=======================================================");
-            Console.WriteLine("ゲーム終了：盤面に空きがありません。");
+            if (_consecutivePassCount >= 2)
+            {
+                Console.WriteLine("ゲーム終了：両者が連続してパスしました。");
+            }
+            else
+            {
+                Console.WriteLine("ゲーム終了：盤面に空きがありません。");
+            }
             if (_enemyFrameConter > _playerFrameConter)
                 Console.WriteLine("敵(黒)の勝ち！");
             else if (_playerFrameConter > _enemyFrameConter)
@@ -228,6 +265,7 @@ public class Othello
             Console.WriteLine("=======================================================");
             return true;
         }
+
         return false;
     }
 
@@ -333,6 +371,12 @@ public class Othello
     /// </summary>
     string ConsoleWriteBoard()
     {
+        // 設置可能な場所を一時的に3にマーク
+        foreach (var move in _validMoves)
+        {
+            tiles[move.x - 1, move.y - 1] = 3;
+        }
+
         builder.Clear();
         builder.Append($"ターン数: {_turnConter}  ");
         if (_turn == 1)
@@ -352,11 +396,19 @@ public class Othello
                     0 => "- ",
                     1 => "● ",
                     2 => "○ ",
+                    3 => "# ",
                     _ => "? "
                 });
             }
             builder.AppendLine();
         }
+
+        // マークした3を0に戻す
+        foreach (var move in _validMoves)
+        {
+            tiles[move.x - 1, move.y - 1] = 0;
+        }
+
         return builder.ToString();
     }
 }
