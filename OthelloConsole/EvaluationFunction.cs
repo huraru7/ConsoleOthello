@@ -2,18 +2,22 @@ using System;
 
 public class EvaluationFunction
 {
+    public int evaluationFunction(int[,] board, int _player, int _AI, int BOARD_SIZE)
+    {
+        return EvaluatePosition(board, _player, _AI, BOARD_SIZE);
+    }
     public int EvaluatePosition(int[,] board, int _player, int _AI, int BOARD_SIZE)
     {
         int[,] scoreSheet = new int[,]
         {
-            { 150, -12, 0, -1, -1, 0, -12, 150},
-            { -12, -15, -3, -3, -3, -3, -15, -12 },
+            { 150, -20, 0, -1, -1, 0, -20, 150},
+            { -20, -15, -3, -3, -3, -3, -15, -20 },
             { 0, -3, 0, -1, -1, 0, -3, 0 },
             { -1, -3, -1, -1, -1, -1, -3, -1 },
             { -1, -3, -1, -1, -1, -1, -3, -1 },
             { 0, -3, 0, -1, -1, 0, -3, 0 },
-            { -12, -15, -3, -3, -3, -3, -15, -12 },
-            { 150, -12, 0, -1, -1, 0, -12, 150 },
+            { -20, -15, -3, -3, -3, -3, -15, -20 },
+            { 150, -20, 0, -1, -1, 0, -20, 150 },
         };
 
         int score = 0;

@@ -3,8 +3,10 @@ using System.Collections.Generic;
 
 public class OthelloAI
 {
-    private int _depth = 0; // 探索の深さ
+    // 探索の深さ
+    private int _depth = 0;
     public bool _isDebug = false; // デバッグログ出力フラグ
+    private int _recursionsCount;
     private int _player;
     private int _AI;
     private const int BOARD_SIZE = 8;
@@ -28,10 +30,10 @@ public class OthelloAI
 
         foreach (var move in _validMoves)
         {
+            _recursionsCount++;
             int[,] newBoard = CopyBoard(_board);
-            AIPlacePiece(move.x, move.y, newBoard, _AI);
             if (_isDebug) Console.WriteLine($"置き場所候補： ({move.x},{move.y}) の評価を開始します。");
-            int score = -Negamax(newBoard, _depth - 1, _player, int.MinValue + 1, int.MaxValue - 1);
+            int score = -Negamax(AIPlacePiece(move.x, move.y, newBoard, _AI), _depth - 1, _player, int.MinValue + 1, int.MaxValue - 1);
 
             if (score > bestScore)
             {
@@ -50,18 +52,21 @@ public class OthelloAI
             }
             if (_isDebug) Console.WriteLine($"置き場所候補： ({move.x},{move.y}) の評価が終了しました。 評価値: {score}");
         }
+        if (_isDebug) Console.WriteLine($"計算回数：{_recursionsCount}");
 
         return bestMove;
     }
 
     private int Negamax(int[,] board, int depth, int player, int alpha, int beta, int level = 0)
     {
-        string indent = new string(' ', level * 4); // 再帰の深さに応じてインデント
+        _recursionsCount++;
+        string indent = new string(' ', level * 4);
         if (_isDebug) Console.WriteLine($"{indent}▶ 深さ {depth} 開始 (プレイヤー: {player})");
 
+        // 終端条件：深さ0なら評価
         if (depth == 0)
         {
-            int eval = evalFunc.EvaluatePosition(board, player, _AI, BOARD_SIZE);
+            int eval = evalFunc.evaluationFunction(board, player, _AI, BOARD_SIZE);
             if (_isDebug) Console.WriteLine($"{indent}  └ 深さ0 評価値: {eval} (プレイヤー: {player})");
             return eval;
         }
@@ -69,20 +74,45 @@ public class OthelloAI
         var validMoves = GetValidMoves(board, player);
         if (validMoves.Count == 0)
         {
-            int eval = evalFunc.EvaluatePosition(board, player, _AI, BOARD_SIZE);
-            if (_isDebug) Console.WriteLine($"{indent}  └ 打てる手なし → 評価値: {eval}");
-            return eval;
+            // 相手の合法手を確認（"パス" 処理）
+            int opponent = (player == 1) ? 2 : 1;
+            var oppMoves = GetValidMoves(board, opponent);
+
+            if (oppMoves.Count == 0)
+            {
+                // 両者打てない -> 終局
+                int eval = evalFunc.evaluationFunction(board, player, _AI, BOARD_SIZE);
+                if (_isDebug) Console.WriteLine($"{indent}  └ 両者手なし（終局） → 評価値: {eval}");
+                return eval;
+            }
+            else
+            {
+                // 自分は打てないが相手は打てる -> パスして相手番を探索（深さを減らす）
+                if (_isDebug) Console.WriteLine($"{indent}  └ プレイヤー {player} はパス (相手に移行)");
+                int val = -Negamax(board, depth - 1, opponent, -beta, -alpha, level + 1);
+                if (_isDebug) Console.WriteLine($"{indent}  └ パス後の戻り値: {val}");
+                return val;
+            }
         }
 
-        int opponent = (player == 1) ? 2 : 1;
+        int opponent2 = (player == 1) ? 2 : 1;
         int maxEval = int.MinValue;
 
         foreach (var move in validMoves)
         {
+            // newBoard を確実に使う（AIPlacePiece は clone して返すこと）
             int[,] newBoard = AIPlacePiece(move.x, move.y, board, player);
-            if (_isDebug) Console.WriteLine($"{indent}  手 ({move.x},{move.y}) を試します (プレイヤー: {player})");
 
-            int eval = -Negamax(newBoard, depth - 1, opponent, -beta, -alpha, level + 1);
+            if (_isDebug)
+            {
+                Console.WriteLine($"{indent}  手 ({move.x},{move.y}) を試します (プレイヤー: {player})");
+                Console.WriteLine($"{indent}  -- 置後の盤面 --");
+                // PrintBoard(newBoard); // デバッグ用（呼んでいるPrintBoardを利用）
+                var oppNext = GetValidMoves(newBoard, opponent2);
+                Console.WriteLine($"{indent}  → 相手(= {opponent2}) の候補手数 = {oppNext.Count}");
+            }
+
+            int eval = -Negamax(newBoard, depth - 1, opponent2, -beta, -alpha, level + 1);
 
             if (_isDebug) Console.WriteLine($"{indent}  ← 手 ({move.x},{move.y}) 結果: {eval}");
 
@@ -103,6 +133,7 @@ public class OthelloAI
         if (_isDebug) Console.WriteLine($"{indent}◀ 深さ {depth} 終了: 戻り値 = {maxEval}");
         return maxEval;
     }
+
 
 
     private List<(int x, int y)> GetValidMoves(int[,] board, int player)
@@ -150,19 +181,21 @@ public class OthelloAI
 
     private int[,] AIPlacePiece(int x, int y, int[,] board, int turn)
     {
-        int[,] copy = (int[,])board.Clone(); // ← 新しい盤面を複製
+        int[,] newBoard = new int[8, 8];
+        Array.Copy(board, newBoard, board.Length);
+
         int current = turn;
         int opponent = (turn == 1) ? 2 : 1;
 
-        // 盤面上は 0-index なので調整
         x -= 1;
         y -= 1;
-        copy[y, x] = current;
+
+        newBoard[x, y] = current;
 
         int[] dx = { -1, 1, 0, 0, -1, -1, 1, 1 };
         int[] dy = { 0, 0, -1, 1, -1, 1, -1, 1 };
 
-        for (int dir = 0; dir < dx.Length; dir++)
+        for (int dir = 0; dir < 8; dir++)
         {
             List<(int x, int y)> candidates = new List<(int x, int y)>();
             int nx = x + dx[dir];
@@ -170,17 +203,14 @@ public class OthelloAI
 
             while (nx >= 0 && nx < 8 && ny >= 0 && ny < 8)
             {
-                if (copy[ny, nx] == opponent)
+                if (newBoard[nx, ny] == opponent)
                 {
                     candidates.Add((nx, ny));
                 }
-                else if (copy[ny, nx] == current)
+                else if (newBoard[nx, ny] == current)
                 {
-                    if (candidates.Count > 0)
-                    {
-                        foreach (var c in candidates)
-                            copy[c.y, c.x] = current;
-                    }
+                    foreach (var c in candidates)
+                        newBoard[c.x, c.y] = current;
                     break;
                 }
                 else break;
@@ -190,7 +220,17 @@ public class OthelloAI
             }
         }
 
-        return copy;
+        return newBoard;
+    }
+
+    void PrintBoard(int[,] b)
+    {
+        for (int i = 0; i < 8; i++)
+        {
+            for (int j = 0; j < 8; j++)
+                Console.Write(b[i, j] + " ");
+            Console.WriteLine();
+        }
     }
 
     private int[,] CopyBoard(int[,] board)
