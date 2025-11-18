@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
+using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 public class Othello
 {
@@ -85,7 +84,7 @@ public class Othello
 
         Console.WriteLine("Enterキーを押してゲームを開始...");
         string command = Console.ReadLine() ?? "";
-        if (command == "wwssadadBA")
+        if (command == "huraru")
         {
             game._ai._isDebug = true; // デバッグモードon
             Console.WriteLine("デバッグモードを有効化しました。");
@@ -264,6 +263,7 @@ public class Othello
             {
                 Console.WriteLine("ゲーム終了：盤面に空きがありません。");
             }
+            Console.WriteLine($"最終結果: 敵(黒) {_enemyFrameConter}個 - プレイヤー(白) {_playerFrameConter}個");
             if (_enemyFrameConter > _playerFrameConter)
                 Console.WriteLine("敵(黒)の勝ち！");
             else if (_playerFrameConter > _enemyFrameConter)

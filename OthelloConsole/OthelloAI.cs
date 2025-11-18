@@ -8,6 +8,7 @@ public class OthelloAI
     private int _player;
     private int _AI;
     private const int BOARD_SIZE = 8;
+    public EvaluationFunction evalFunc = new EvaluationFunction();
 
     public (int x, int y) AI(List<(int x, int y)> _validMoves, int[,] _board, int player, AIStrength _AIStrength)
     {
@@ -37,6 +38,17 @@ public class OthelloAI
                 bestScore = score;
                 bestMove = move;
             }
+            else if (score == bestScore)
+            {
+                //scoreが一緒の場合は確率で変更する
+                Random rand = new Random();
+                if (rand.Next(0, 2) == 0) // 50%の確率で変更
+                {
+                    bestScore = score;
+                    bestMove = move;
+                }
+            }
+            if (_isDebug) Console.WriteLine($"置き場所候補： ({move.x},{move.y}) の評価が終了しました。 評価値: {score}");
         }
 
         return bestMove;
@@ -49,7 +61,7 @@ public class OthelloAI
 
         if (depth == 0)
         {
-            int eval = EvaluatePosition(board);
+            int eval = evalFunc.EvaluatePosition(board, player, _AI, BOARD_SIZE);
             if (_isDebug) Console.WriteLine($"{indent}  └ 深さ0 評価値: {eval} (プレイヤー: {player})");
             return eval;
         }
@@ -57,7 +69,7 @@ public class OthelloAI
         var validMoves = GetValidMoves(board, player);
         if (validMoves.Count == 0)
         {
-            int eval = EvaluatePosition(board);
+            int eval = evalFunc.EvaluatePosition(board, player, _AI, BOARD_SIZE);
             if (_isDebug) Console.WriteLine($"{indent}  └ 打てる手なし → 評価値: {eval}");
             return eval;
         }
@@ -179,35 +191,6 @@ public class OthelloAI
         }
 
         return copy;
-    }
-
-
-    private int EvaluatePosition(int[,] board)
-    {
-        int[,] scoreSheet = new int[,]
-        {
-            { 30, -12, 0, -1, -1, 0, -12, 30 },
-            { -12, -15, -3, -3, -3, -3, -15, -12 },
-            { 0, -3, 0, -1, -1, 0, -3, 0 },
-            { -1, -3, -1, -1, -1, -1, -3, -1 },
-            { -1, -3, -1, -1, -1, -1, -3, -1 },
-            { 0, -3, 0, -1, -1, 0, -3, 0 },
-            { -12, -15, -3, -3, -3, -3, -15, -12 },
-            { 30, -12, 0, -1, -1, 0, -12, 30 },
-        };
-
-        int score = 0;
-        for (int y = 0; y < BOARD_SIZE; y++)
-        {
-            for (int x = 0; x < BOARD_SIZE; x++)
-            {
-                if (board[y, x] == _AI)
-                    score += scoreSheet[y, x];
-                else if (board[y, x] == _player)
-                    score -= scoreSheet[y, x];
-            }
-        }
-        return score;
     }
 
     private int[,] CopyBoard(int[,] board)
