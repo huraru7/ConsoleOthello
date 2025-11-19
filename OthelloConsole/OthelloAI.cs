@@ -11,11 +11,13 @@ public class OthelloAI
     private int _AI;
     private const int BOARD_SIZE = 8;
     public EvaluationFunction evalFunc = new EvaluationFunction();
+    private StreamWriter? sw;
 
     public (int x, int y) AI(List<(int x, int y)> _validMoves, int[,] _board, int player, AIStrength _AIStrength)
     {
         _player = player;
         _AI = (player == 1) ? 2 : 1;
+        StartLogging();
 
         switch (_AIStrength)
         {
@@ -32,7 +34,7 @@ public class OthelloAI
         {
             _recursionsCount++;
             int[,] newBoard = CopyBoard(_board);
-            if (_isDebug) Console.WriteLine($"置き場所候補： ({move.x},{move.y}) の評価を開始します。");
+            DebugLog($"置き場所候補： ({move.x},{move.y}) の評価を開始します。");
             int score = -Negamax(AIPlacePiece(move.x, move.y, newBoard, _AI), _depth - 1, _player, int.MinValue + 1, int.MaxValue - 1);
 
             if (score > bestScore)
@@ -50,10 +52,12 @@ public class OthelloAI
                     bestMove = move;
                 }
             }
-            if (_isDebug) Console.WriteLine($"置き場所候補： ({move.x},{move.y}) の評価が終了しました。 評価値: {score}");
+            DebugLog($"置き場所候補： ({move.x},{move.y}) の評価が終了しました。 評価値: {score}");
         }
-        if (_isDebug) Console.WriteLine($"計算回数：{_recursionsCount}");
+        DebugLog("=============Ai評価終了=============");
+        DebugLog($"総計算手順回数：{_recursionsCount}");
 
+        StopLogging();
         return bestMove;
     }
 
@@ -61,13 +65,13 @@ public class OthelloAI
     {
         _recursionsCount++;
         string indent = new string(' ', level * 4);
-        if (_isDebug) Console.WriteLine($"{indent}▶ 深さ {depth} 開始 (プレイヤー: {player})");
+        DebugLog($"{indent}▶ 深さ {depth} 開始 (プレイヤー: {player})");
 
         // 終端条件：深さ0なら評価
         if (depth == 0)
         {
             int eval = evalFunc.evaluationFunction(board, player, _AI, BOARD_SIZE);
-            if (_isDebug) Console.WriteLine($"{indent}  └ 深さ0 評価値: {eval} (プレイヤー: {player})");
+            DebugLog($"{indent}  └ 深さ0 評価値: {eval} (プレイヤー: {player})");
             return eval;
         }
 
@@ -82,15 +86,16 @@ public class OthelloAI
             {
                 // 両者打てない -> 終局
                 int eval = evalFunc.evaluationFunction(board, player, _AI, BOARD_SIZE);
-                if (_isDebug) Console.WriteLine($"{indent}  └ 両者手なし（終局） → 評価値: {eval}");
+                DebugLog($"{indent}  └ 両者手なし（終局） → 評価値: {eval}");
+                DebugLog($"{indent}  {BoardToString(board)}");
                 return eval;
             }
             else
             {
                 // 自分は打てないが相手は打てる -> パスして相手番を探索（深さを減らす）
-                if (_isDebug) Console.WriteLine($"{indent}  └ プレイヤー {player} はパス (相手に移行)");
+                DebugLog($"{indent}  └ プレイヤー {player} はパス (相手に移行)");
                 int val = -Negamax(board, depth - 1, opponent, -beta, -alpha, level + 1);
-                if (_isDebug) Console.WriteLine($"{indent}  └ パス後の戻り値: {val}");
+                DebugLog($"{indent}  └ パス後の戻り値: {val}");
                 return val;
             }
         }
@@ -102,35 +107,28 @@ public class OthelloAI
         {
             // newBoard を確実に使う（AIPlacePiece は clone して返すこと）
             int[,] newBoard = AIPlacePiece(move.x, move.y, board, player);
-
-            if (_isDebug)
-            {
-                Console.WriteLine($"{indent}  手 ({move.x},{move.y}) を試します (プレイヤー: {player})");
-                Console.WriteLine($"{indent}  -- 置後の盤面 --");
-                // PrintBoard(newBoard); // デバッグ用（呼んでいるPrintBoardを利用）
-                var oppNext = GetValidMoves(newBoard, opponent2);
-                Console.WriteLine($"{indent}  → 相手(= {opponent2}) の候補手数 = {oppNext.Count}");
-            }
+            DebugLog($"{indent}  手 ({move.x},{move.y}) を試す");
+            DebugLog($"{indent}  -- 置後の盤面 --\n{BoardToString(newBoard)}");
 
             int eval = -Negamax(newBoard, depth - 1, opponent2, -beta, -alpha, level + 1);
 
-            if (_isDebug) Console.WriteLine($"{indent}  ← 手 ({move.x},{move.y}) 結果: {eval}");
+            DebugLog($"{indent}  ← 手 ({move.x},{move.y}) 結果: {eval}");
 
             if (eval > maxEval)
             {
                 maxEval = eval;
-                if (_isDebug) Console.WriteLine($"{indent}     ↳ 現在のベスト更新: {maxEval}");
+                DebugLog($"{indent}     ↳ 現在のベスト更新: {maxEval}");
             }
 
             alpha = Math.Max(alpha, eval);
             if (alpha >= beta)
             {
-                if (_isDebug) Console.WriteLine($"{indent}  ✂ 枝刈り発生（alpha={alpha}, beta={beta}）");
+                DebugLog($"{indent}  ✂ 枝刈り発生！ alpha={alpha}, beta={beta}");
                 break;
             }
         }
 
-        if (_isDebug) Console.WriteLine($"{indent}◀ 深さ {depth} 終了: 戻り値 = {maxEval}");
+        DebugLog($"{indent}◀ 深さ {depth} 終了: 戻り値 = {maxEval}");
         return maxEval;
     }
 
@@ -223,22 +221,45 @@ public class OthelloAI
         return newBoard;
     }
 
-    void PrintBoard(int[,] b)
-    {
-        for (int i = 0; i < 8; i++)
-        {
-            for (int j = 0; j < 8; j++)
-                Console.Write(b[i, j] + " ");
-            Console.WriteLine();
-        }
-    }
-
     private int[,] CopyBoard(int[,] board)
     {
         int[,] copy = new int[BOARD_SIZE, BOARD_SIZE];
         Array.Copy(board, copy, board.Length);
         return copy;
     }
+    public void StartLogging()
+    {
+        string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        string logFile = $"AI_log_{timestamp}.txt";
+        sw = new StreamWriter(logFile, false); // 新規作成
+        Console.WriteLine($"ログファイル生成先: {Path.GetFullPath(logFile)}");
+    }
+    public void StopLogging()
+    {
+        sw?.Flush();
+        sw?.Close();
+    }
+
+    private void DebugLog(string message)
+    {
+        sw?.WriteLine(message);
+    }
+    private string BoardToString(int[,] board)
+    {
+        int size = board.GetLength(0);
+        var sb = new System.Text.StringBuilder();
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                sb.Append(board[y, x] switch { 0 => "-", 1 => "●", 2 => "○", _ => "?" });
+                sb.Append(" ");
+            }
+            sb.AppendLine();
+        }
+        return sb.ToString();
+    }
+
 }
 
 public enum AIStrength
