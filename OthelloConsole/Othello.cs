@@ -20,6 +20,7 @@ public class Othello
     private StringBuilder builder = new();
     private int _turnConter = 0;
     private int _turn = 1; // 1:プレイヤー  2:敵
+    private GameTurn appturn = GameTurn.prayer1;//上のintのターン管理を廃止してenumに変更予定
     private int _playerFrameConter = 2;
     private int _enemyFrameConter = 2;
     private List<(int x, int y)> _validMoves = new List<(int x, int y)>();
@@ -59,20 +60,17 @@ public class Othello
         }
         if (game._gameMode == GameMode.AIvsPlayer)
         {
-            Console.WriteLine("AIの強さを選択してください:初心者(1) 普通(2) 上級者(3) プロ(4)");
+            Console.WriteLine("AIの強さを選択してください:初心者(1) 普通(2) 上級者(3) プロ(未実装)");
             string aiInput = Console.ReadLine() ?? "";
             switch (aiInput)
             {
                 case "1":
-                    game._AIStrength = AIStrength.whet;
-                    break;
-                case "2":
                     game._AIStrength = AIStrength.nuub;
                     break;
-                case "3":
+                case "2":
                     game._AIStrength = AIStrength.normal;
                     break;
-                case "4":
+                case "3":
                     game._AIStrength = AIStrength.professional;
                     break;
                 default:
@@ -419,4 +417,11 @@ public class Othello
 
         return builder.ToString();
     }
+}
+
+public enum GameTurn
+{
+    prayer1,
+    prayer2,
+    AI
 }

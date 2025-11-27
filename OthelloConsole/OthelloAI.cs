@@ -21,7 +21,6 @@ public class OthelloAI
 
         switch (_AIStrength)
         {
-            case AIStrength.whet: _depth = 0; break;
             case AIStrength.nuub: _depth = 2; break;
             case AIStrength.normal: _depth = 4; break;
             case AIStrength.professional: _depth = 6; break;
@@ -264,7 +263,6 @@ public class OthelloAI
 
 public enum AIStrength
 {
-    whet,
     nuub,
     normal,
     professional
