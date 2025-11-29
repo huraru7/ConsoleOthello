@@ -3,6 +3,9 @@ using System.Collections.Generic;
 
 public class OthelloAI
 {
+    //!私気付きました　これ探索アルゴリズムぶっ壊れおります
+    //?全てを作り直して方が早いと思う
+
     // 探索の深さ
     private int _depth = 0;
     public bool _isDebug = false; // デバッグログ出力フラグ
