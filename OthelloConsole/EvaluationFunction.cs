@@ -9,13 +9,17 @@ public class EvaluationFunction
     /// <param name="board">評価する盤面</param>
     /// <param name="_player">プレイヤーの番号</param>
     /// <param name="_AI">AIの番号</param>
-    /// <param name="BOARD_SIZE">ボードサイズ（定数）</param>
     /// <returns>boardの評価値を返します</returns>
-    public int evaluationFunction(int[,] board, int _player, int _AI, int BOARD_SIZE)
+    public int evaluationFunction(int[,] board, int _player)
     {
-        return EvaluatePosition(board, _player, _AI, BOARD_SIZE);
+        int evaluationScore = 0;
+        //今まで認識を間違えていました、minimax法なので評価基準は全て自分にとっての評価を行うべきです。
+        //おそらくminimax法を反転させた上でnagamax法を使っていたのが今までのバグの原因かもしれません。
+        evaluationScore += EvaluatePosition(board, _player);
+
+        return evaluationScore;
     }
-    public int EvaluatePosition(int[,] board, int _player, int _AI, int BOARD_SIZE)
+    public int EvaluatePosition(int[,] board, int _player)
     {
         int[,] scoreSheet = new int[,]
         {
@@ -30,14 +34,12 @@ public class EvaluationFunction
         };
 
         int score = 0;
-        for (int y = 0; y < BOARD_SIZE; y++)
+        for (int y = 0; y < 8; y++)
         {
-            for (int x = 0; x < BOARD_SIZE; x++)
+            for (int x = 0; x < 8; x++)
             {
-                if (board[y, x] == _AI)
-                    score += scoreSheet[y, x];
-                else if (board[y, x] == _player)
-                    score -= scoreSheet[y, x];
+                if (scoreSheet[x, y] == _player)
+                    score += scoreSheet[x, y];
             }
         }
         return score;

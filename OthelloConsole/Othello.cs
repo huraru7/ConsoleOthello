@@ -5,7 +5,6 @@ using System.Text;
 
 public class Othello
 {
-
     void DataReset()
     {
         _gameData._tiles = new int[,]
@@ -195,9 +194,12 @@ public class Othello
                         _gameData._gameTurn = GameTurn.prayer2;
                         break;
                 }
+                _turnNum = 2;
                 break;
-            case GameTurn.prayer2: _gameData._gameTurn = GameTurn.prayer1; break;
-            case GameTurn.AI: _gameData._gameTurn = GameTurn.prayer1; break;
+            case GameTurn.prayer2 or GameTurn.AI:
+                _gameData._gameTurn = GameTurn.prayer1;
+                _turnNum = 1;
+                break;
         }
     }
 
@@ -295,7 +297,6 @@ public class Othello
             Console.WriteLine("=======================================================");
             return true;
         }
-
         return false;
     }
 
