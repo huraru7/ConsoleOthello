@@ -3,15 +3,10 @@ using System.Collections.Generic;
 
 public class OthelloAI
 {
-    //!私気付きました　これ探索アルゴリズムぶっ壊れおります
-    //?全てを作り直して方が早いと思う
-
     // 探索の深さ
     private int _depth = 0;
     public bool _isDebug = false; // デバッグログ出力フラグ
     private int _recursionsCount;
-    private int _player;
-    private int _AI;
     private const int BOARD_SIZE = 8;
     public EvaluationFunction evalFunc = new EvaluationFunction();
     private StreamWriter? sw;
@@ -22,8 +17,6 @@ public class OthelloAI
         int player,
         AIStrength _AIStrength)
     {
-        _player = player;
-        _AI = (player == 1) ? 2 : 1;
         (int, int) bestMove = (0, 0);//仮です
         StartLogging();
 
