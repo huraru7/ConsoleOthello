@@ -16,7 +16,11 @@ public class OthelloAI
     public EvaluationFunction evalFunc = new EvaluationFunction();
     private StreamWriter? sw;
 
-    public (int x, int y) AI(List<(int x, int y)> _validMoves, int[,] _board, int player, AIStrength _AIStrength)
+    public (int x, int y) AI(
+        List<(int x, int y)> _validMoves,
+        int[,] _board,
+        int player,
+        AIStrength _AIStrength)
     {
         _player = player;
         _AI = (player == 1) ? 2 : 1;

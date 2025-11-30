@@ -18,9 +18,10 @@ public class Othello
     };
 
     private StringBuilder builder = new();
+
+    private MainGameData _gameData = new MainGameData();
     private int _turnConter = 0;
-    private int _turn = 1; // 1:プレイヤー  2:敵
-    private GameTurn appturn = GameTurn.prayer1;//上のintのターン管理を廃止してenumに変更予定
+    private int _turnNum = 1; // 1:prayer1  2:prayer2 or AI
     private int _playerFrameConter = 2;
     private int _enemyFrameConter = 2;
     private List<(int x, int y)> _validMoves = new List<(int x, int y)>();
@@ -28,54 +29,50 @@ public class Othello
     public GameMode _gameMode;
     public AIStrength _AIStrength;
     public OthelloAI _ai = new OthelloAI();
-    public enum GameMode
-    {
-        AIvsPlayer,
-        PlayervsPlayer
-    }
 
     /// <summary>
     /// スタート処理
     /// </summary>
     public static async Task Main()
     {
+        Othello _game = new Othello();
         Console.WriteLine("オセロへようこそ！");
         Console.WriteLine("モード選択:AI対戦(1) 2人対戦(2)");
         string input = Console.ReadLine() ?? "";
-        Othello game = new Othello();
+
         switch (input)
         {
             case "1":
                 Console.WriteLine("AI対戦モードを選択しました。");
-                game._gameMode = GameMode.AIvsPlayer;
+                _game._gameMode = GameMode.AIvsPlayer;
                 break;
             case "2":
                 Console.WriteLine("2人対戦モードを選択しました。");
-                game._gameMode = GameMode.PlayervsPlayer;
+                _game._gameMode = GameMode.PlayervsPlayer;
                 break;
             default:
                 Console.WriteLine("無効な入力です。2人対戦モードに進みます。");
-                game._gameMode = GameMode.PlayervsPlayer;
+                _game._gameMode = GameMode.PlayervsPlayer;
                 break;
         }
-        if (game._gameMode == GameMode.AIvsPlayer)
+        if (_game._gameMode == GameMode.AIvsPlayer)
         {
             Console.WriteLine("AIの強さを選択してください:初心者(1) 普通(2) 上級者(3) プロ(未実装)");
             string aiInput = Console.ReadLine() ?? "";
             switch (aiInput)
             {
                 case "1":
-                    game._AIStrength = AIStrength.nuub;
+                    _game._AIStrength = AIStrength.nuub;
                     break;
                 case "2":
-                    game._AIStrength = AIStrength.normal;
+                    _game._AIStrength = AIStrength.normal;
                     break;
                 case "3":
-                    game._AIStrength = AIStrength.professional;
+                    _game._AIStrength = AIStrength.professional;
                     break;
                 default:
                     Console.WriteLine("無効な入力です。普通モードに進みます。");
-                    game._AIStrength = AIStrength.normal;
+                    _game._AIStrength = AIStrength.normal;
                     break;
             }
         }
@@ -84,13 +81,13 @@ public class Othello
         string command = Console.ReadLine() ?? "";
         if (command == "huraru")
         {
-            game._ai._isDebug = true; // デバッグモードon
+            _game._ai._isDebug = true; // デバッグモードon
             Console.WriteLine("デバッグモードを有効化しました。");
             Console.ReadLine();
         }
 
         Console.Clear();
-        await game.RunGame();
+        await _game.RunGame();
     }
 
     /// <summary>
@@ -111,7 +108,7 @@ public class Othello
                 Console.WriteLine("置ける場所がありません。ターンをスキップします。");
                 Console.WriteLine("=======================================================");
                 _consecutivePassCount++;
-                _turn = _turn == 1 ? 2 : 1;
+                TurnChange();
                 _turnConter++;
                 continue;
             }
@@ -125,7 +122,7 @@ public class Othello
             }
 
             string input;
-            if (_gameMode == GameMode.AIvsPlayer && _turn == 2)
+            if (_gameData._gameTurn == GameTurn.AI)
             {
                 Console.WriteLine("=======================================================");
                 (int x, int y) = _ai.AI(_validMoves, tiles, 1, _AIStrength);
@@ -159,7 +156,7 @@ public class Othello
 
             Console.Clear();
 
-            if (_gameMode == GameMode.AIvsPlayer && _turn == 2)
+            if (_gameData._gameTurn == GameTurn.AI)
             {
                 Console.WriteLine($"AIの選択した手:{row}, {col}");
             }
@@ -171,8 +168,31 @@ public class Othello
             PlacePiece(row, col);
             _consecutivePassCount = 0; // パスをリセット
 
-            _turn = _turn == 1 ? 2 : 1;//turn変更
+            TurnChange();
             _turnConter++;
+        }
+    }
+
+    /// <summary>
+    /// ターンを変更します
+    /// </summary>
+    void TurnChange()
+    {
+        switch (_gameData._gameTurn)
+        {
+            case GameTurn.prayer1:
+                switch (_gameMode)
+                {
+                    case GameMode.AIvsPlayer:
+                        _gameData._gameTurn = GameTurn.AI;
+                        break;
+                    case GameMode.PlayervsPlayer:
+                        _gameData._gameTurn = GameTurn.prayer2;
+                        break;
+                }
+                break;
+            case GameTurn.prayer2: _gameData._gameTurn = GameTurn.prayer1; break;
+            case GameTurn.AI: _gameData._gameTurn = GameTurn.prayer1; break;
         }
     }
 
@@ -181,9 +201,8 @@ public class Othello
     /// </summary>
     void PlacePiece(int x, int y)
     {
-        x -= 1;
-        y -= 1;
-        tiles[x, y] = _turn;
+        x -= 1; y -= 1;//内部座標に修正
+        tiles[x, y] = _turnNum;
 
         int[] dx = { -1, 1, 0, 0, -1, -1, 1, 1 };
         int[] dy = { 0, 0, -1, 1, -1, 1, -1, 1 };
@@ -197,17 +216,17 @@ public class Othello
 
             while (nx >= 0 && nx < 8 && ny >= 0 && ny < 8)
             {
-                if (tiles[nx, ny] == (_turn == 1 ? 2 : 1)) // 相手の駒
+                if (tiles[nx, ny] == (_turnNum == 1 ? 2 : 1)) // 相手の駒
                 {
                     Candidates.Add((nx, ny));
                 }
-                else if (tiles[nx, ny] == (_turn == 1 ? 1 : 2)) // 自分の駒
+                else if (tiles[nx, ny] == (_turnNum == 1 ? 1 : 2)) // 自分の駒
                 {
                     if (Candidates.Count > 0)
                     {
                         foreach (var candidate in Candidates)
                         {
-                            tiles[candidate.x, candidate.y] = _turn;
+                            tiles[candidate.x, candidate.y] = _turnNum;
                         }
                     }
                     break;
@@ -251,7 +270,7 @@ public class Othello
 
         if (!hasEmpty)
         {
-            ConsoleWriteBoard();
+            Console.WriteLine(ConsoleWriteBoard());
             Console.WriteLine("=======================================================");
             if (_consecutivePassCount >= 2)
             {
@@ -304,11 +323,11 @@ public class Othello
                         while (x >= 0 && x < 8 && y >= 0 && y < 8)
                         {
 
-                            if (tiles[x, y] == (_turn == 1 ? 2 : 1)) // 相手の駒
+                            if (tiles[x, y] == (_turnNum == 1 ? 2 : 1)) // 相手の駒
                             {
                                 hasOpponentPiece = true;
                             }
-                            else if (tiles[x, y] == (_turn == 1 ? 1 : 2)) // 自分の駒
+                            else if (tiles[x, y] == (_turnNum == 1 ? 1 : 2)) // 自分の駒
                             {
                                 if (hasOpponentPiece)
                                 {
@@ -385,7 +404,7 @@ public class Othello
 
         builder.Clear();
         builder.Append($"ターン数: {_turnConter}  ");
-        if (_turn == 1)
+        if (_gameData._gameTurn == GameTurn.prayer1)
             builder.Append("現在のターン: ●\n");
         else
             builder.Append("現在のターン: ○\n");
@@ -417,11 +436,4 @@ public class Othello
 
         return builder.ToString();
     }
-}
-
-public enum GameTurn
-{
-    prayer1,
-    prayer2,
-    AI
 }
