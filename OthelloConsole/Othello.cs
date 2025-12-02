@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 public class Othello
@@ -25,8 +23,8 @@ public class Othello
     private StringBuilder builder = new();
     private MainGameData _gameData = new MainGameData();
     private int _turnNum = 1; // 1:prayer1  2:prayer2 or AI
-    private int _playerFrameConter = 2;
-    private int _enemyFrameConter = 2;
+    private int _player1FrameConter = 2;
+    private int _player2FrameConter = 2;
     private List<(int x, int y)> _validMoves = new List<(int x, int y)>();
     private int _consecutivePassCount = 0; // 連続パス回数のカウント
     public GameMode _gameMode;
@@ -248,19 +246,19 @@ public class Othello
             }
         }
 
-        _playerFrameConter = 0;
-        _enemyFrameConter = 0;
+        _player1FrameConter = 0;
+        _player2FrameConter = 0;
         for (int i = 0; i < _gameData._tiles.GetLength(0); i++)
         {
             for (int j = 0; j < _gameData._tiles.GetLength(1); j++)
             {
                 if (_gameData._tiles[i, j] == 1)
                 {
-                    _playerFrameConter++;
+                    _player1FrameConter++;
                 }
                 else if (_gameData._tiles[i, j] == 2)
                 {
-                    _enemyFrameConter++;
+                    _player2FrameConter++;
                 }
             }
         }
@@ -287,10 +285,10 @@ public class Othello
             {
                 Console.WriteLine("ゲーム終了：盤面に空きがありません。");
             }
-            Console.WriteLine($"最終結果: 敵(黒) {_enemyFrameConter}個 - プレイヤー(白) {_playerFrameConter}個");
-            if (_enemyFrameConter > _playerFrameConter)
+            Console.WriteLine($"最終結果: 敵(黒) {_player2FrameConter}個 - プレイヤー(白) {_player1FrameConter}個");
+            if (_player2FrameConter > _player1FrameConter)
                 Console.WriteLine("敵(黒)の勝ち！");
-            else if (_playerFrameConter > _enemyFrameConter)
+            else if (_player1FrameConter > _player2FrameConter)
                 Console.WriteLine("プレイヤー(白)の勝ち！");
             else
                 Console.WriteLine("引き分け");
@@ -415,7 +413,7 @@ public class Othello
             builder.Append("現在のターン: ●\n");
         else
             builder.Append("現在のターン: ○\n");
-        builder.Append($"プレイヤー: {_playerFrameConter}個    敵: {_enemyFrameConter}個\n");
+        builder.Append($"プレイヤー: {_player1FrameConter}個    敵: {_player2FrameConter}個\n");
         builder.Append("   1 2 3 4 5 6 7 8\n  ┏===============\n");
 
         for (int i = 0; i < 8; i++)
