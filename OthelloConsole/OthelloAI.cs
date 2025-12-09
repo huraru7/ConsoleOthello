@@ -10,11 +10,7 @@ public class OthelloAI
     public EvaluationFunction evalFunc = new EvaluationFunction();
     private StreamWriter? sw;
 
-    public (int x, int y) AI(
-        List<(int x, int y)> _validMoves,
-        int[,] _board,
-        int player,
-        AIStrength _AIStrength)
+    public (int x, int y) AI(List<(int x, int y)> _validMoves, MainGameData _data, AIStrength _AIStrength)
     {
         (int, int) bestMove = (0, 0);//仮です
         StartLogging();
@@ -37,8 +33,6 @@ public class OthelloAI
     {
 
     }
-
-
 
     private List<(int x, int y)> GetValidMoves(int[,] board, int player)
     {

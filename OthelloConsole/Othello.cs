@@ -127,7 +127,7 @@ public class Othello
             if (_gameData._gameTurn == GameTurn.AI)
             {
                 Console.WriteLine("=======================================================");
-                (int x, int y) = _ai.AI(_validMoves, _gameData._tiles, 1, _AIStrength);
+                (int x, int y) = _ai.AI(_validMoves, _gameData, _AIStrength);
                 Console.WriteLine($"AIの手{x},{y}を選択しました。");
                 input = $"{x}{y}";
 
