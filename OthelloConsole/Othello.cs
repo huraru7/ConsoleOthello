@@ -17,11 +17,12 @@ public class Othello : OthelloSystem
             {0,0,0,0,0,0,0,0},
         };
         _gameData._gameTurn = GameTurn.prayer1;
-        _gameData._turnConter = 0;
+        _gameData._turnConter = 1;
     }
 
     private StringBuilder builder = new();
     private MainGameData _gameData = new MainGameData();
+    public OthelloAI _ai = new OthelloAI();
     private int _turnNum = 1; // 1:prayer1  2:prayer2 or AI
     private int _player1FrameConter = 2;
     private int _player2FrameConter = 2;
@@ -29,7 +30,6 @@ public class Othello : OthelloSystem
     private int _consecutivePassCount = 0; // 連続パス回数のカウント
     public GameMode _gameMode;
     public AIStrength _AIStrength;
-    public OthelloAI _ai = new OthelloAI();
 
     /// <summary>
     /// スタート処理
@@ -99,7 +99,7 @@ public class Othello : OthelloSystem
     {
         while (true)
         {
-            _validMoves = InstallationArea();
+            //!_validMoves = InstallationArea();　　InstallationAreaも現在工事中です；；
             if (GameChecker()) return;
 
             Console.WriteLine(ConsoleWriteBoard());
@@ -132,7 +132,7 @@ public class Othello : OthelloSystem
                 input = $"{x}{y}";
 
                 if (_ai._isDebug) Console.ReadLine();
-                await Task.Delay(3500); // 1秒待機
+                await Task.Delay(3500); // 3.5秒待機
             }
             else
             {
@@ -236,69 +236,6 @@ public class Othello : OthelloSystem
     }
 
     /// <summary>
-    /// 設置可能な場所を出します
-    /// </summary>
-    /// <returns>おける場所の座標リスト</returns>
-    List<(int x, int y)> InstallationArea()
-    {
-        var moves = new List<(int x, int y)>();
-
-        for (int i = 0; i < _gameData._tiles.GetLength(0); i++)
-        {
-            for (int j = 0; j < _gameData._tiles.GetLength(1); j++)
-            {
-                // 既に駒が置いてある場所は候補にしない
-                if (_gameData._tiles[i, j] != 0) continue;
-
-                bool canPlace = false;
-
-                for (int dx = -1; dx <= 1; dx++)
-                {
-                    for (int dy = -1; dy <= 1; dy++)
-                    {
-                        if (dx == 0 && dy == 0) continue; // 自分は飛ばす
-
-                        int x = i + dx;
-                        int y = j + dy;
-                        bool hasOpponentPiece = false;
-
-                        while (x >= 0 && x < 8 && y >= 0 && y < 8)
-                        {
-
-                            if (_gameData._tiles[x, y] == (_turnNum == 1 ? 2 : 1)) // 相手の駒
-                            {
-                                hasOpponentPiece = true;
-                            }
-                            else if (_gameData._tiles[x, y] == (_turnNum == 1 ? 1 : 2)) // 自分の駒
-                            {
-                                if (hasOpponentPiece)
-                                {
-                                    canPlace = true;
-                                }
-                                break;
-                            }
-                            else // 空きマス
-                            {
-                                break;
-                            }
-                            x += dx;
-                            y += dy;
-                        }
-                    }
-                }
-
-                if (canPlace)
-                {
-                    if (_gameData._tiles[i, j] != 0) continue;
-                    moves.Add((i + 1, j + 1)); // 1ベースで保存
-                }
-            }
-        }
-
-        return moves;
-    }
-
-    /// <summary>
     /// ユーザー入力文字列を (行, 列) の2つの int に変換します
     /// 戻り値: 成功true(outに値を返します) 失敗ならfalse
     /// </summary>
@@ -338,7 +275,7 @@ public class Othello : OthelloSystem
     /// </summary>
     string ConsoleWriteBoard()
     {
-        // 設置可能な場所を一時的に3にマーク
+        // 設置可能な場所を一時的に「3」にマーク
         foreach (var move in _validMoves)
         {
             _gameData._tiles[move.x - 1, move.y - 1] = 3;
@@ -370,7 +307,7 @@ public class Othello : OthelloSystem
             builder.AppendLine();
         }
 
-        // マークした3を0に戻す
+        // マークした「3」を0に戻す
         foreach (var move in _validMoves)
         {
             _gameData._tiles[move.x - 1, move.y - 1] = 0;

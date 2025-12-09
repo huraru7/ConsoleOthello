@@ -53,6 +53,67 @@ public class OthelloSystem
         }
     }
 
+    /// <summary>
+    /// 設置可能な場所を出します
+    /// </summary>
+    /// <returns>おける場所の座標リスト</returns>
+    public List<(int x, int y)> InstallationArea(int[,] _tiles, int _turnNum)
+    {
+        var moves = new List<(int x, int y)>();
+
+        for (int i = 0; i < _tiles.GetLength(0); i++)
+        {
+            for (int j = 0; j < _tiles.GetLength(1); j++)
+            {
+                // 既に駒が置いてある場所は候補にしない
+                if (_tiles[i, j] != 0) continue;
+
+                bool canPlace = false;
+
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    for (int dy = -1; dy <= 1; dy++)
+                    {
+                        if (dx == 0 && dy == 0) continue; // 自分は飛ばす
+
+                        int x = i + dx;
+                        int y = j + dy;
+                        bool hasOpponentPiece = false;
+
+                        while (x >= 0 && x < 8 && y >= 0 && y < 8)
+                        {
+
+                            if (_tiles[x, y] == (_turnNum == 1 ? 2 : 1)) // 相手の駒
+                            {
+                                hasOpponentPiece = true;
+                            }
+                            else if (_tiles[x, y] == (_turnNum == 1 ? 1 : 2)) // 自分の駒
+                            {
+                                if (hasOpponentPiece)
+                                {
+                                    canPlace = true;
+                                }
+                                break;
+                            }
+                            else // 空きマス
+                            {
+                                break;
+                            }
+                            x += dx;
+                            y += dy;
+                        }
+                    }
+                }
+                if (canPlace)
+                {
+                    if (_tiles[i, j] != 0) continue;
+                    moves.Add((i + 1, j + 1)); // 1ベースで保存
+                }
+            }
+        }
+        return moves;
+    }
+
     public (int, int) counting(int[,] tiles)
     {
         int counter1 = 0;

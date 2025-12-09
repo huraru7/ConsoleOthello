@@ -19,7 +19,7 @@ public class EvaluationFunction
 
         return evaluationScore;
     }
-    public int EvaluatePosition(int[,] board, int _player)
+    private int EvaluatePosition(int[,] board, int _player)
     {
         int[,] scoreSheet = new int[,]
         {
