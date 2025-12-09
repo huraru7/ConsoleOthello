@@ -10,12 +10,12 @@ public class OthelloAI : OthelloDebugLog
     public EvaluationFunction evalFunc = new EvaluationFunction();
     private StreamWriter? sw;
 
-    public (int x, int y) AI(List<(int x, int y)> _validMoves, MainGameData _data, AIStrength _AIStrength)
+    public (int x, int y) AI(List<(int x, int y)> _validMoves, MainGameData _gamedata)
     {
         (int, int) bestMove = (0, 0);//仮です
         StartLogging();
 
-        switch (_AIStrength)
+        switch (_gamedata._AIStrength)
         {
             case AIStrength.nuub: _depth = 2; break;
             case AIStrength.normal: _depth = 4; break;
