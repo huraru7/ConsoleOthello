@@ -1,81 +1,78 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
-public class Othello
+public class Othello : OthelloSystem
 {
-    public int[,] tiles = new int[,]
+    void DataReset()
     {
-        {0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0},
-        {0,0,0,2,1,0,0,0},
-        {0,0,0,1,2,0,0,0},
-        {0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0},
-        {0,0,0,0,0,0,0,0},
-    };
+        _gameData._tiles = new int[,]
+        {
+            {0,0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0,0},
+            {0,0,0,2,1,0,0,0},
+            {0,0,0,1,2,0,0,0},
+            {0,0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0,0},
+            {0,0,0,0,0,0,0,0},
+        };
+        _gameData._gameTurn = GameTurn.prayer1;
+        _gameData._turnConter = 1; //ターン数
+        _gameData._turnNum = 1; // 1:prayer1  2:prayer2 or AI
+    }
 
     private StringBuilder builder = new();
-    private int _turnConter = 0;
-    private int _turn = 1; // 1:プレイヤー  2:敵
-    private GameTurn appturn = GameTurn.prayer1;//上のintのターン管理を廃止してenumに変更予定
-    private int _playerFrameConter = 2;
-    private int _enemyFrameConter = 2;
+    private MainGameData _gameData = new MainGameData();
+    public OthelloAI _ai = new OthelloAI();
+    private int _player1FrameConter = 2;
+    private int _player2FrameConter = 2;
     private List<(int x, int y)> _validMoves = new List<(int x, int y)>();
     private int _consecutivePassCount = 0; // 連続パス回数のカウント
-    public GameMode _gameMode;
-    public AIStrength _AIStrength;
-    public OthelloAI _ai = new OthelloAI();
-    public enum GameMode
-    {
-        AIvsPlayer,
-        PlayervsPlayer
-    }
 
     /// <summary>
     /// スタート処理
     /// </summary>
     public static async Task Main()
     {
+        Othello _game = new Othello();
+        _game.DataReset();
         Console.WriteLine("オセロへようこそ！");
         Console.WriteLine("モード選択:AI対戦(1) 2人対戦(2)");
         string input = Console.ReadLine() ?? "";
-        Othello game = new Othello();
+
         switch (input)
         {
             case "1":
                 Console.WriteLine("AI対戦モードを選択しました。");
-                game._gameMode = GameMode.AIvsPlayer;
+                _game._gameData._gameMode = GameMode.AIvsPlayer;
                 break;
             case "2":
                 Console.WriteLine("2人対戦モードを選択しました。");
-                game._gameMode = GameMode.PlayervsPlayer;
+                _game._gameData._gameMode = GameMode.PlayervsPlayer;
                 break;
             default:
                 Console.WriteLine("無効な入力です。2人対戦モードに進みます。");
-                game._gameMode = GameMode.PlayervsPlayer;
+                _game._gameData._gameMode = GameMode.PlayervsPlayer;
                 break;
         }
-        if (game._gameMode == GameMode.AIvsPlayer)
+        if (_game._gameData._gameMode == GameMode.AIvsPlayer)
         {
             Console.WriteLine("AIの強さを選択してください:初心者(1) 普通(2) 上級者(3) プロ(未実装)");
             string aiInput = Console.ReadLine() ?? "";
             switch (aiInput)
             {
                 case "1":
-                    game._AIStrength = AIStrength.nuub;
+                    _game._gameData._AIStrength = AIStrength.nuub;
                     break;
                 case "2":
-                    game._AIStrength = AIStrength.normal;
+                    _game._gameData._AIStrength = AIStrength.normal;
                     break;
                 case "3":
-                    game._AIStrength = AIStrength.professional;
+                    _game._gameData._AIStrength = AIStrength.professional;
                     break;
                 default:
                     Console.WriteLine("無効な入力です。普通モードに進みます。");
-                    game._AIStrength = AIStrength.normal;
+                    _game._gameData._AIStrength = AIStrength.normal;
                     break;
             }
         }
@@ -84,13 +81,13 @@ public class Othello
         string command = Console.ReadLine() ?? "";
         if (command == "huraru")
         {
-            game._ai._isDebug = true; // デバッグモードon
+            _game._ai._isDebug = true; // デバッグモードon
             Console.WriteLine("デバッグモードを有効化しました。");
             Console.ReadLine();
         }
 
         Console.Clear();
-        await game.RunGame();
+        await _game.RunGame();
     }
 
     /// <summary>
@@ -100,7 +97,7 @@ public class Othello
     {
         while (true)
         {
-            _validMoves = InstallationArea();
+            _validMoves = InstallationArea(_gameData);
             if (GameChecker()) return;
 
             Console.WriteLine(ConsoleWriteBoard());
@@ -111,8 +108,8 @@ public class Othello
                 Console.WriteLine("置ける場所がありません。ターンをスキップします。");
                 Console.WriteLine("=======================================================");
                 _consecutivePassCount++;
-                _turn = _turn == 1 ? 2 : 1;
-                _turnConter++;
+                TurnChange();
+                _gameData._turnConter++;
                 continue;
             }
             else
@@ -125,15 +122,15 @@ public class Othello
             }
 
             string input;
-            if (_gameMode == GameMode.AIvsPlayer && _turn == 2)
+            if (_gameData._gameTurn == GameTurn.AI)
             {
                 Console.WriteLine("=======================================================");
-                (int x, int y) = _ai.AI(_validMoves, tiles, 1, _AIStrength);
+                (int x, int y) = _ai.AI(_validMoves, _gameData);
                 Console.WriteLine($"AIの手{x},{y}を選択しました。");
                 input = $"{x}{y}";
 
                 if (_ai._isDebug) Console.ReadLine();
-                await Task.Delay(3500); // 1秒待機
+                await Task.Delay(3500); // 3.5秒待機
             }
             else
             {
@@ -159,7 +156,7 @@ public class Othello
 
             Console.Clear();
 
-            if (_gameMode == GameMode.AIvsPlayer && _turn == 2)
+            if (_gameData._gameTurn == GameTurn.AI)
             {
                 Console.WriteLine($"AIの選択した手:{row}, {col}");
             }
@@ -168,75 +165,37 @@ public class Othello
                 Console.WriteLine($"入力を解析しました: {row}, {col}");
             }
             Console.WriteLine("=======================================================");
-            PlacePiece(row, col);
+            PlacePiece(row, col, _gameData);
             _consecutivePassCount = 0; // パスをリセット
 
-            _turn = _turn == 1 ? 2 : 1;//turn変更
-            _turnConter++;
+            TurnChange();
+            _gameData._turnConter++;
         }
     }
 
     /// <summary>
-    /// 駒の処理を行います。設置、反転、
+    /// ターンを変更します
     /// </summary>
-    void PlacePiece(int x, int y)
+    void TurnChange()
     {
-        x -= 1;
-        y -= 1;
-        tiles[x, y] = _turn;
-
-        int[] dx = { -1, 1, 0, 0, -1, -1, 1, 1 };
-        int[] dy = { 0, 0, -1, 1, -1, 1, -1, 1 };
-
-        for (int direction = 0; direction < dx.Length; direction++)
+        switch (_gameData._gameTurn)
         {
-            List<(int x, int y)> Candidates = new List<(int x, int y)>();
-
-            int nx = x + dx[direction];
-            int ny = y + dy[direction];
-
-            while (nx >= 0 && nx < 8 && ny >= 0 && ny < 8)
-            {
-                if (tiles[nx, ny] == (_turn == 1 ? 2 : 1)) // 相手の駒
+            case GameTurn.prayer1:
+                switch (_gameData._gameMode)
                 {
-                    Candidates.Add((nx, ny));
+                    case GameMode.AIvsPlayer:
+                        _gameData._gameTurn = GameTurn.AI;
+                        break;
+                    case GameMode.PlayervsPlayer:
+                        _gameData._gameTurn = GameTurn.prayer2;
+                        break;
                 }
-                else if (tiles[nx, ny] == (_turn == 1 ? 1 : 2)) // 自分の駒
-                {
-                    if (Candidates.Count > 0)
-                    {
-                        foreach (var candidate in Candidates)
-                        {
-                            tiles[candidate.x, candidate.y] = _turn;
-                        }
-                    }
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-
-                nx += dx[direction];
-                ny += dy[direction];
-            }
-        }
-
-        _playerFrameConter = 0;
-        _enemyFrameConter = 0;
-        for (int i = 0; i < tiles.GetLength(0); i++)
-        {
-            for (int j = 0; j < tiles.GetLength(1); j++)
-            {
-                if (tiles[i, j] == 1)
-                {
-                    _playerFrameConter++;
-                }
-                else if (tiles[i, j] == 2)
-                {
-                    _enemyFrameConter++;
-                }
-            }
+                _gameData._turnNum = 2;
+                break;
+            case GameTurn.prayer2 or GameTurn.AI:
+                _gameData._gameTurn = GameTurn.prayer1;
+                _gameData._turnNum = 1;
+                break;
         }
     }
 
@@ -246,12 +205,12 @@ public class Othello
     bool GameChecker()
     {
         bool hasEmpty;
-        hasEmpty = tiles.Cast<int>().Any(t => t == 0);
+        hasEmpty = _gameData._tiles.Cast<int>().Any(t => t == 0);
         if (_consecutivePassCount >= 2) hasEmpty = false;
 
         if (!hasEmpty)
         {
-            ConsoleWriteBoard();
+            Console.WriteLine(ConsoleWriteBoard());
             Console.WriteLine("=======================================================");
             if (_consecutivePassCount >= 2)
             {
@@ -261,80 +220,17 @@ public class Othello
             {
                 Console.WriteLine("ゲーム終了：盤面に空きがありません。");
             }
-            Console.WriteLine($"最終結果: 敵(黒) {_enemyFrameConter}個 - プレイヤー(白) {_playerFrameConter}個");
-            if (_enemyFrameConter > _playerFrameConter)
+            Console.WriteLine($"最終結果: 敵(黒) {_player2FrameConter}個 - プレイヤー(白) {_player1FrameConter}個");
+            if (_player2FrameConter > _player1FrameConter)
                 Console.WriteLine("敵(黒)の勝ち！");
-            else if (_playerFrameConter > _enemyFrameConter)
+            else if (_player1FrameConter > _player2FrameConter)
                 Console.WriteLine("プレイヤー(白)の勝ち！");
             else
                 Console.WriteLine("引き分け");
             Console.WriteLine("=======================================================");
             return true;
         }
-
         return false;
-    }
-
-    /// <summary>
-    /// 設置可能エリアを出します
-    /// </summary>
-    List<(int x, int y)> InstallationArea()
-    {
-        var moves = new List<(int x, int y)>();
-
-        for (int i = 0; i < tiles.GetLength(0); i++)
-        {
-            for (int j = 0; j < tiles.GetLength(1); j++)
-            {
-                // 既に駒が置いてある場所は候補にしない
-                if (tiles[i, j] != 0) continue;
-
-                bool canPlace = false;
-
-                for (int dx = -1; dx <= 1; dx++)
-                {
-                    for (int dy = -1; dy <= 1; dy++)
-                    {
-                        if (dx == 0 && dy == 0) continue; // 自分は飛ばす
-
-                        int x = i + dx;
-                        int y = j + dy;
-                        bool hasOpponentPiece = false;
-
-                        while (x >= 0 && x < 8 && y >= 0 && y < 8)
-                        {
-
-                            if (tiles[x, y] == (_turn == 1 ? 2 : 1)) // 相手の駒
-                            {
-                                hasOpponentPiece = true;
-                            }
-                            else if (tiles[x, y] == (_turn == 1 ? 1 : 2)) // 自分の駒
-                            {
-                                if (hasOpponentPiece)
-                                {
-                                    canPlace = true;
-                                }
-                                break;
-                            }
-                            else // 空きマス
-                            {
-                                break;
-                            }
-                            x += dx;
-                            y += dy;
-                        }
-                    }
-                }
-
-                if (canPlace)
-                {
-                    if (tiles[i, j] != 0) continue;
-                    moves.Add((i + 1, j + 1)); // 1ベースで保存
-                }
-            }
-        }
-
-        return moves;
     }
 
     /// <summary>
@@ -377,19 +273,19 @@ public class Othello
     /// </summary>
     string ConsoleWriteBoard()
     {
-        // 設置可能な場所を一時的に3にマーク
+        // 設置可能な場所を一時的に「3」にマーク
         foreach (var move in _validMoves)
         {
-            tiles[move.x - 1, move.y - 1] = 3;
+            _gameData._tiles[move.x - 1, move.y - 1] = 3;
         }
 
         builder.Clear();
-        builder.Append($"ターン数: {_turnConter}  ");
-        if (_turn == 1)
+        builder.Append($"ターン数: {_gameData._turnConter}  ");
+        if (_gameData._gameTurn == GameTurn.prayer1)
             builder.Append("現在のターン: ●\n");
         else
             builder.Append("現在のターン: ○\n");
-        builder.Append($"プレイヤー: {_playerFrameConter}個    敵: {_enemyFrameConter}個\n");
+        builder.Append($"プレイヤー: {_player1FrameConter}個    敵: {_player2FrameConter}個\n");
         builder.Append("   1 2 3 4 5 6 7 8\n  ┏===============\n");
 
         for (int i = 0; i < 8; i++)
@@ -397,7 +293,7 @@ public class Othello
             builder.Append($"{i + 1} |");
             for (int j = 0; j < 8; j++)
             {
-                builder.Append(tiles[i, j] switch
+                builder.Append(_gameData._tiles[i, j] switch
                 {
                     0 => "- ",
                     1 => "● ",
@@ -409,19 +305,12 @@ public class Othello
             builder.AppendLine();
         }
 
-        // マークした3を0に戻す
+        // マークした「3」を0に戻す
         foreach (var move in _validMoves)
         {
-            tiles[move.x - 1, move.y - 1] = 0;
+            _gameData._tiles[move.x - 1, move.y - 1] = 0;
         }
 
         return builder.ToString();
     }
-}
-
-public enum GameTurn
-{
-    prayer1,
-    prayer2,
-    AI
 }
