@@ -10,10 +10,10 @@ public class OthelloSystem
     /// <param name="y">駒を置く座標(y座標)</param>
     /// <param name="tiles">盤面</param>
     /// <param name="_turnNum">ターン(数字)</param>
-    public void PlacePiece(int x, int y, int[,] tiles, int _turnNum)
+    public void PlacePiece(int x, int y, MainGameData _gameData)
     {
         x -= 1; y -= 1;//内部座標に修正
-        tiles[x, y] = _turnNum;
+        _gameData._tiles[x, y] = _gameData._turnNum;
 
         int[] dx = { -1, 1, 0, 0, -1, -1, 1, 1 };
         int[] dy = { 0, 0, -1, 1, -1, 1, -1, 1 };
@@ -27,17 +27,17 @@ public class OthelloSystem
 
             while (nx >= 0 && nx < 8 && ny >= 0 && ny < 8)
             {
-                if (tiles[nx, ny] == (_turnNum == 1 ? 2 : 1)) // 相手の駒
+                if (_gameData._tiles[nx, ny] == (_gameData._turnNum == 1 ? 2 : 1)) // 相手の駒
                 {
                     Candidates.Add((nx, ny));
                 }
-                else if (tiles[nx, ny] == (_turnNum == 1 ? 1 : 2)) // 自分の駒
+                else if (_gameData._tiles[nx, ny] == (_gameData._turnNum == 1 ? 1 : 2)) // 自分の駒
                 {
                     if (Candidates.Count > 0)
                     {
                         foreach (var candidate in Candidates)
                         {
-                            tiles[candidate.x, candidate.y] = _turnNum;
+                            _gameData._tiles[candidate.x, candidate.y] = _gameData._turnNum;
                         }
                     }
                     break;
@@ -57,16 +57,16 @@ public class OthelloSystem
     /// 設置可能な場所を出します
     /// </summary>
     /// <returns>おける場所の座標リスト</returns>
-    public List<(int x, int y)> InstallationArea(int[,] _tiles, int _turnNum)
+    public List<(int x, int y)> InstallationArea(MainGameData _gameData)
     {
         var moves = new List<(int x, int y)>();
 
-        for (int i = 0; i < _tiles.GetLength(0); i++)
+        for (int i = 0; i < _gameData._tiles.GetLength(0); i++)
         {
-            for (int j = 0; j < _tiles.GetLength(1); j++)
+            for (int j = 0; j < _gameData._tiles.GetLength(1); j++)
             {
                 // 既に駒が置いてある場所は候補にしない
-                if (_tiles[i, j] != 0) continue;
+                if (_gameData._tiles[i, j] != 0) continue;
 
                 bool canPlace = false;
 
@@ -83,11 +83,11 @@ public class OthelloSystem
                         while (x >= 0 && x < 8 && y >= 0 && y < 8)
                         {
 
-                            if (_tiles[x, y] == (_turnNum == 1 ? 2 : 1)) // 相手の駒
+                            if (_gameData._tiles[x, y] == (_gameData._turnNum == 1 ? 2 : 1)) // 相手の駒
                             {
                                 hasOpponentPiece = true;
                             }
-                            else if (_tiles[x, y] == (_turnNum == 1 ? 1 : 2)) // 自分の駒
+                            else if (_gameData._tiles[x, y] == (_gameData._turnNum == 1 ? 1 : 2)) // 自分の駒
                             {
                                 if (hasOpponentPiece)
                                 {
@@ -106,7 +106,7 @@ public class OthelloSystem
                 }
                 if (canPlace)
                 {
-                    if (_tiles[i, j] != 0) continue;
+                    if (_gameData._tiles[i, j] != 0) continue;
                     moves.Add((i + 1, j + 1)); // 1ベースで保存
                 }
             }

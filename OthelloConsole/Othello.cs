@@ -17,19 +17,17 @@ public class Othello : OthelloSystem
             {0,0,0,0,0,0,0,0},
         };
         _gameData._gameTurn = GameTurn.prayer1;
-        _gameData._turnConter = 1;
+        _gameData._turnConter = 1; //ターン数
+        _gameData._turnNum = 1; // 1:prayer1  2:prayer2 or AI
     }
 
     private StringBuilder builder = new();
     private MainGameData _gameData = new MainGameData();
     public OthelloAI _ai = new OthelloAI();
-    private int _turnNum = 1; // 1:prayer1  2:prayer2 or AI
     private int _player1FrameConter = 2;
     private int _player2FrameConter = 2;
     private List<(int x, int y)> _validMoves = new List<(int x, int y)>();
     private int _consecutivePassCount = 0; // 連続パス回数のカウント
-    public GameMode _gameMode;
-    public AIStrength _AIStrength;
 
     /// <summary>
     /// スタート処理
@@ -46,35 +44,35 @@ public class Othello : OthelloSystem
         {
             case "1":
                 Console.WriteLine("AI対戦モードを選択しました。");
-                _game._gameMode = GameMode.AIvsPlayer;
+                _game._gameData._gameMode = GameMode.AIvsPlayer;
                 break;
             case "2":
                 Console.WriteLine("2人対戦モードを選択しました。");
-                _game._gameMode = GameMode.PlayervsPlayer;
+                _game._gameData._gameMode = GameMode.PlayervsPlayer;
                 break;
             default:
                 Console.WriteLine("無効な入力です。2人対戦モードに進みます。");
-                _game._gameMode = GameMode.PlayervsPlayer;
+                _game._gameData._gameMode = GameMode.PlayervsPlayer;
                 break;
         }
-        if (_game._gameMode == GameMode.AIvsPlayer)
+        if (_game._gameData._gameMode == GameMode.AIvsPlayer)
         {
             Console.WriteLine("AIの強さを選択してください:初心者(1) 普通(2) 上級者(3) プロ(未実装)");
             string aiInput = Console.ReadLine() ?? "";
             switch (aiInput)
             {
                 case "1":
-                    _game._AIStrength = AIStrength.nuub;
+                    _game._gameData._AIStrength = AIStrength.nuub;
                     break;
                 case "2":
-                    _game._AIStrength = AIStrength.normal;
+                    _game._gameData._AIStrength = AIStrength.normal;
                     break;
                 case "3":
-                    _game._AIStrength = AIStrength.professional;
+                    _game._gameData._AIStrength = AIStrength.professional;
                     break;
                 default:
                     Console.WriteLine("無効な入力です。普通モードに進みます。");
-                    _game._AIStrength = AIStrength.normal;
+                    _game._gameData._AIStrength = AIStrength.normal;
                     break;
             }
         }
@@ -99,7 +97,7 @@ public class Othello : OthelloSystem
     {
         while (true)
         {
-            //!_validMoves = InstallationArea();　　InstallationAreaも現在工事中です；；
+            _validMoves = InstallationArea(_gameData);
             if (GameChecker()) return;
 
             Console.WriteLine(ConsoleWriteBoard());
@@ -127,7 +125,7 @@ public class Othello : OthelloSystem
             if (_gameData._gameTurn == GameTurn.AI)
             {
                 Console.WriteLine("=======================================================");
-                (int x, int y) = _ai.AI(_validMoves, _gameData, _AIStrength);
+                (int x, int y) = _ai.AI(_validMoves, _gameData, _gameData._AIStrength);
                 Console.WriteLine($"AIの手{x},{y}を選択しました。");
                 input = $"{x}{y}";
 
@@ -167,7 +165,7 @@ public class Othello : OthelloSystem
                 Console.WriteLine($"入力を解析しました: {row}, {col}");
             }
             Console.WriteLine("=======================================================");
-            //! PlacePiece(row, col); (現在PlacePice工事中)
+            PlacePiece(row, col, _gameData);
             _consecutivePassCount = 0; // パスをリセット
 
             TurnChange();
@@ -183,7 +181,7 @@ public class Othello : OthelloSystem
         switch (_gameData._gameTurn)
         {
             case GameTurn.prayer1:
-                switch (_gameMode)
+                switch (_gameData._gameMode)
                 {
                     case GameMode.AIvsPlayer:
                         _gameData._gameTurn = GameTurn.AI;
@@ -192,11 +190,11 @@ public class Othello : OthelloSystem
                         _gameData._gameTurn = GameTurn.prayer2;
                         break;
                 }
-                _turnNum = 2;
+                _gameData._turnNum = 2;
                 break;
             case GameTurn.prayer2 or GameTurn.AI:
                 _gameData._gameTurn = GameTurn.prayer1;
-                _turnNum = 1;
+                _gameData._turnNum = 1;
                 break;
         }
     }
