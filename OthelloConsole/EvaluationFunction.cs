@@ -13,8 +13,8 @@ public class EvaluationFunction
     public int evaluationFunction(int[,] board, int _player)
     {
         int evaluationScore = 0;
-        //今まで認識を間違えていました、minimax法なので評価基準は全て自分にとっての評価を行うべきです。
-        //おそらくminimax法を反転させた上でnagamax法を使っていたのが今までのバグの原因かもしれません。
+        //!今まで認識を間違えていました、minimax法なので評価基準は全て自分にとっての評価を行うべきです。
+        //!おそらくminimax法を反転させた上でnagamax法を使っていたのが今までのバグの原因かもしれません。
         evaluationScore += EvaluatePosition(board, _player);
 
         return evaluationScore;

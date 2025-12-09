@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
 
-public class OthelloAI
+public class OthelloAI : OthelloDebugLog
 {
     private int _depth = 0;
     public bool _isDebug = false; // デバッグログ出力フラグ
-    private int _recursionsCount;//計算回数
-    private const int BOARD_SIZE = 8;//定数
+    private int _recursionsCount; //計算回数
+    private const int BOARD_SIZE = 8; //定数
     public EvaluationFunction evalFunc = new EvaluationFunction();
     private StreamWriter? sw;
 

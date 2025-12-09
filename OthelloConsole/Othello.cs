@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Text;
 
-public class Othello
+public class Othello : OthelloSystem
 {
     void DataReset()
     {
@@ -167,7 +167,7 @@ public class Othello
                 Console.WriteLine($"入力を解析しました: {row}, {col}");
             }
             Console.WriteLine("=======================================================");
-            PlacePiece(row, col);
+            //! PlacePiece(row, col); (現在PlacePice工事中)
             _consecutivePassCount = 0; // パスをリセット
 
             TurnChange();
@@ -198,69 +198,6 @@ public class Othello
                 _gameData._gameTurn = GameTurn.prayer1;
                 _turnNum = 1;
                 break;
-        }
-    }
-
-    /// <summary>
-    /// 駒の処理を行います。設置、反転、
-    /// </summary>
-    void PlacePiece(int x, int y)
-    {
-        x -= 1; y -= 1;//内部座標に修正
-        _gameData._tiles[x, y] = _turnNum;
-
-        int[] dx = { -1, 1, 0, 0, -1, -1, 1, 1 };
-        int[] dy = { 0, 0, -1, 1, -1, 1, -1, 1 };
-
-        for (int i = 0; i < dx.Length; i++)
-        {
-            var Candidates = new List<(int x, int y)>();
-
-            int nx = x + dx[i];
-            int ny = y + dy[i];
-
-            while (nx >= 0 && nx < 8 && ny >= 0 && ny < 8)
-            {
-                if (_gameData._tiles[nx, ny] == (_turnNum == 1 ? 2 : 1)) // 相手の駒
-                {
-                    Candidates.Add((nx, ny));
-                }
-                else if (_gameData._tiles[nx, ny] == (_turnNum == 1 ? 1 : 2)) // 自分の駒
-                {
-                    if (Candidates.Count > 0)
-                    {
-                        foreach (var candidate in Candidates)
-                        {
-                            _gameData._tiles[candidate.x, candidate.y] = _turnNum;
-                        }
-                    }
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-
-                nx += dx[i];
-                ny += dy[i];
-            }
-        }
-
-        _player1FrameConter = 0;
-        _player2FrameConter = 0;
-        for (int i = 0; i < _gameData._tiles.GetLength(0); i++)
-        {
-            for (int j = 0; j < _gameData._tiles.GetLength(1); j++)
-            {
-                if (_gameData._tiles[i, j] == 1)
-                {
-                    _player1FrameConter++;
-                }
-                else if (_gameData._tiles[i, j] == 2)
-                {
-                    _player2FrameConter++;
-                }
-            }
         }
     }
 

@@ -3,7 +3,14 @@ using System;
 public class OthelloSystem
 {
 
-    void PlacePiece(int x, int y, int[,] tiles, int _turnNum)
+    /// <summary>
+    /// 駒をおき、反転の処理をします。
+    /// </summary>
+    /// <param name="x">駒を置く座標(x座標)</param>
+    /// <param name="y">駒を置く座標(y座標)</param>
+    /// <param name="tiles">盤面</param>
+    /// <param name="_turnNum">ターン(数字)</param>
+    public void PlacePiece(int x, int y, int[,] tiles, int _turnNum)
     {
         x -= 1; y -= 1;//内部座標に修正
         tiles[x, y] = _turnNum;
@@ -44,5 +51,26 @@ public class OthelloSystem
                 ny += dy[i];
             }
         }
+    }
+
+    public (int, int) counting(int[,] tiles)
+    {
+        int counter1 = 0;
+        int counter2 = 0;
+        for (int i = 0; i < tiles.GetLength(0); i++)
+        {
+            for (int j = 0; j < tiles.GetLength(1); j++)
+            {
+                if (tiles[i, j] == 1)
+                {
+                    counter1++;
+                }
+                else if (tiles[i, j] == 2)
+                {
+                    counter2++;
+                }
+            }
+        }
+        return (counter1, counter2);
     }
 }
