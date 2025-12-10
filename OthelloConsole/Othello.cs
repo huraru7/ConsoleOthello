@@ -24,8 +24,8 @@ public class Othello
     private StringBuilder builder = new();
     private MainGameData _gameData = new MainGameData();
     public OthelloAI _ai = new OthelloAI();
-    private int _player1FrameConter = 2;
-    private int _player2FrameConter = 2;
+    private int _player1FrameCounter = 2;
+    private int _player2FrameCounter = 2;
     private List<(int x, int y)> _validMoves = new List<(int x, int y)>();
     private int _consecutivePassCount = 0; // 連続パス回数のカウント
 
@@ -166,6 +166,7 @@ public class Othello
             }
             Console.WriteLine("=======================================================");
             PlacePiece(row, col, _gameData);
+            (_player1FrameCounter, _player2FrameCounter) = counting(_gameData._tiles);
             _consecutivePassCount = 0; // パスをリセット
 
             TurnChange();
@@ -220,10 +221,10 @@ public class Othello
             {
                 Console.WriteLine("ゲーム終了：盤面に空きがありません。");
             }
-            Console.WriteLine($"最終結果: 敵(黒) {_player2FrameConter}個 - プレイヤー(白) {_player1FrameConter}個");
-            if (_player2FrameConter > _player1FrameConter)
+            Console.WriteLine($"最終結果: 敵(黒) {_player2FrameCounter}個 - プレイヤー(白) {_player1FrameCounter}個");
+            if (_player2FrameCounter > _player1FrameCounter)
                 Console.WriteLine("敵(黒)の勝ち！");
-            else if (_player1FrameConter > _player2FrameConter)
+            else if (_player1FrameCounter > _player2FrameCounter)
                 Console.WriteLine("プレイヤー(白)の勝ち！");
             else
                 Console.WriteLine("引き分け");
@@ -282,10 +283,14 @@ public class Othello
         builder.Clear();
         builder.Append($"ターン数: {_gameData._turnConter}  ");
         if (_gameData._gameTurn == GameTurn.prayer1)
+        {
             builder.Append("現在のターン: ●\n");
+        }
         else
+        {
             builder.Append("現在のターン: ○\n");
-        builder.Append($"プレイヤー: {_player1FrameConter}個    敵: {_player2FrameConter}個\n");
+        }
+        builder.Append($"プレイヤー: {_player1FrameCounter}個    敵: {_player2FrameCounter}個\n");
         builder.Append("   1 2 3 4 5 6 7 8\n  ┏===============\n");
 
         for (int i = 0; i < 8; i++)
@@ -293,14 +298,7 @@ public class Othello
             builder.Append($"{i + 1} |");
             for (int j = 0; j < 8; j++)
             {
-                builder.Append(_gameData._tiles[i, j] switch
-                {
-                    0 => "- ",
-                    1 => "● ",
-                    2 => "○ ",
-                    3 => "# ",
-                    _ => "? "
-                });
+                builder.Append(_gameData._tiles[i, j] switch { 0 => "- ", 1 => "● ", 2 => "○ ", 3 => "# ", _ => "? " });
             }
             builder.AppendLine();
         }

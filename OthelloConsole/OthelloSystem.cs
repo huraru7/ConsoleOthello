@@ -114,6 +114,11 @@ public static class OthelloSystem
         return moves;
     }
 
+    /// <summary>
+    /// 駒の数を数えます
+    /// </summary>
+    /// <param name="tiles">盤面</param>
+    /// <returns>(プレイヤー1 , プレイヤー2)</returns>
     public static (int, int) counting(int[,] tiles)
     {
         int counter1 = 0;

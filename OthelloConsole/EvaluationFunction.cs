@@ -1,13 +1,13 @@
 using System;
 
-public class EvaluationFunction
+public static class EvaluationFunction
 {
     /// <summary>
     /// 評価関数を回します
     /// </summary>
     /// <param name="_gameData"></param>
     /// <returns>その盤面の評価値</returns>
-    public int evaluationFunction(MainGameData _gameData)
+    public static int evaluationFunction(MainGameData _gameData)
     {
         int evaluationScore = 0;
         //!今まで認識を間違えていました、minimax法なので評価基準は全て自分にとっての評価を行うべきです。
@@ -16,7 +16,7 @@ public class EvaluationFunction
 
         return evaluationScore;
     }
-    private int EvaluatePosition(int[,] _tiles, int _turnNum)
+    private static int EvaluatePosition(int[,] _tiles, int _turnNum)
     {
         int[,] scoreSheet = new int[,]
         {
