@@ -1,6 +1,6 @@
 using System;
 
-public class OthelloSystem
+public static class OthelloSystem
 {
 
     /// <summary>
@@ -10,7 +10,7 @@ public class OthelloSystem
     /// <param name="y">駒を置く座標(y座標)</param>
     /// <param name="tiles">盤面</param>
     /// <param name="_turnNum">ターン(数字)</param>
-    public void PlacePiece(int x, int y, MainGameData _gameData)
+    public static void PlacePiece(int x, int y, MainGameData _gameData)
     {
         x -= 1; y -= 1;//内部座標に修正
         _gameData._tiles[x, y] = _gameData._turnNum;
@@ -57,7 +57,7 @@ public class OthelloSystem
     /// 設置可能な場所を出します
     /// </summary>
     /// <returns>おける場所の座標リスト</returns>
-    public List<(int x, int y)> InstallationArea(MainGameData _gameData)
+    public static List<(int x, int y)> InstallationArea(MainGameData _gameData)
     {
         var moves = new List<(int x, int y)>();
 
@@ -114,7 +114,7 @@ public class OthelloSystem
         return moves;
     }
 
-    public (int, int) counting(int[,] tiles)
+    public static (int, int) counting(int[,] tiles)
     {
         int counter1 = 0;
         int counter2 = 0;

@@ -1,7 +1,7 @@
-﻿using System;
-using System.Text;
+﻿using System.Text;
+using static OthelloSystem;
 
-public class Othello : OthelloSystem
+public class Othello
 {
     void DataReset()
     {
@@ -79,7 +79,7 @@ public class Othello : OthelloSystem
 
         Console.WriteLine("Enterキーを押してゲームを開始...");
         string command = Console.ReadLine() ?? "";
-        if (command == "huraru")
+        if (command == "debug")
         {
             _game._ai._isDebug = true; // デバッグモードon
             Console.WriteLine("デバッグモードを有効化しました。");

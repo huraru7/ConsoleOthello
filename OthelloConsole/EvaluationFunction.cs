@@ -2,24 +2,21 @@ using System;
 
 public class EvaluationFunction
 {
-
     /// <summary>
-    /// 評価関数
+    /// 評価関数を回します
     /// </summary>
-    /// <param name="board">評価する盤面</param>
-    /// <param name="_player">プレイヤーの番号</param>
-    /// <param name="_AI">AIの番号</param>
-    /// <returns>boardの評価値を返します</returns>
-    public int evaluationFunction(int[,] board, int _player)
+    /// <param name="_gameData"></param>
+    /// <returns>その盤面の評価値</returns>
+    public int evaluationFunction(MainGameData _gameData)
     {
         int evaluationScore = 0;
         //!今まで認識を間違えていました、minimax法なので評価基準は全て自分にとっての評価を行うべきです。
         //!おそらくminimax法を反転させた上でnagamax法を使っていたのが今までのバグの原因かもしれません。
-        evaluationScore += EvaluatePosition(board, _player);
+        evaluationScore += EvaluatePosition(_gameData._tiles, _gameData._turnNum);
 
         return evaluationScore;
     }
-    private int EvaluatePosition(int[,] board, int _player)
+    private int EvaluatePosition(int[,] _tiles, int _turnNum)
     {
         int[,] scoreSheet = new int[,]
         {
@@ -38,7 +35,7 @@ public class EvaluationFunction
         {
             for (int x = 0; x < 8; x++)
             {
-                if (scoreSheet[x, y] == _player)
+                if (_tiles[x, y] == _turnNum)
                     score += scoreSheet[x, y];
             }
         }

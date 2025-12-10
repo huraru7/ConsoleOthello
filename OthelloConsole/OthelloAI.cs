@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-public class OthelloAI : OthelloDebugLog
+public class OthelloAI
 {
     private int _depth = 0;
     public bool _isDebug = false; // デバッグログ出力フラグ
