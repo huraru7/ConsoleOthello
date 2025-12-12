@@ -8,7 +8,6 @@ public class OthelloAI
     private int _depth = 0;
     public bool _isDebug = false; // デバッグログ出力フラグ
     private int _recursionsCount; //計算回数
-    private const int BOARD_SIZE = 8; //定数
     private StreamWriter? sw;
 
     public (int x, int y) AI(List<(int x, int y)> _validMoves, MainGameData _gamedata)
@@ -30,29 +29,35 @@ public class OthelloAI
         return bestMove;
     }
 
-    private void Negamax(int[,] board, int depth, int player, int alpha, int beta, int level = 0)
+    private int Negamax(int _depth, MainGameData _gamedata, bool trigger)
     {
+        if (_depth == 0)//深さ0は評価値を返す
+        {
+            return evaluationFunction(_gamedata);
+        }
 
+        int maxScore = int.MinValue;
+        List<(int x, int y)> validMoves = InstallationArea(_gamedata);
+        if (validMoves.Count == 0)
+        {
+            //2回連続で置けない場合はゲームは終了している。
+            if (trigger) return evaluationFunction(_gamedata);
+
+            //スキップする処理
+            int score = -Negamax(_depth - 1, _gamedata, true);
+        }
+        else
+        {
+            foreach (var move in validMoves)
+            {
+                MainGameData newGameData = _gamedata.Clone();
+                PlacePiece(move.x, move.y, newGameData);
+                int score = -Negamax(_depth - 1, newGameData, false);
+                maxScore = Math.Max(maxScore, score);
+            }
+        }
     }
 
-    public void StartLogging()
-    {
-        string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        string logFile = $"AI_log_{timestamp}.txt";
-        sw = new StreamWriter(logFile, false); // 新規作成
-        Console.WriteLine($"ログファイル生成先: {Path.GetFullPath(logFile)}");
-    }
-
-    public void StopLogging()
-    {
-        sw?.Flush();
-        sw?.Close();
-    }
-
-    private void DebugLog(string message)
-    {
-        sw?.WriteLine(message);
-    }
     private string BoardToString(int[,] board)
     {
         int size = board.GetLength(0);

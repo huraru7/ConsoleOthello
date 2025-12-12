@@ -8,6 +8,18 @@ public struct MainGameData
     public int _turnNum;
     public GameMode _gameMode;
     public AIStrength _AIStrength;
+
+    public MainGameData Clone()
+    {
+        MainGameData clone = new MainGameData();
+        clone._tiles = (int[,])this._tiles.Clone();
+        clone._gameTurn = this._gameTurn;
+        clone._turnConter = this._turnConter;
+        clone._turnNum = this._turnNum;
+        clone._gameMode = this._gameMode;
+        clone._AIStrength = this._AIStrength;
+        return clone;
+    }
 }
 
 public enum GameTurn
