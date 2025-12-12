@@ -13,6 +13,7 @@ public class OthelloAI
     public (int x, int y) AI(List<(int x, int y)> _validMoves, MainGameData _gamedata)
     {
         (int, int) bestMove = (0, 0);//仮です
+        _recursionsCount = 0;
         StartLogging();
 
         switch (_gamedata._AIStrength)
@@ -22,6 +23,20 @@ public class OthelloAI
             case AIStrength.professional: _depth = 6; break;
         }
 
+        DebugLog("=============Ai評価開始=============");
+        int maxScore = int.MinValue;
+        foreach (var move in _validMoves)
+        {
+            MainGameData newGameData = _gamedata.Clone();
+            _recursionsCount++;
+            PlacePiece(move.x, move.y, newGameData);
+            int score = -Negamax(_depth - 1, newGameData, false);
+            if (score > maxScore)
+            {
+                maxScore = score;
+                bestMove = move;
+            }
+        }
         DebugLog("=============Ai評価終了=============");
         DebugLog($"総計算手順回数：{_recursionsCount}");
 
@@ -31,7 +46,7 @@ public class OthelloAI
 
     private int Negamax(int _depth, MainGameData _gamedata, bool trigger)
     {
-        if (_depth == 0)//深さ0は評価値を返す
+        if (_depth <= 0)//深さ0は評価値を返す
         {
             return evaluationFunction(_gamedata);
         }
@@ -44,36 +59,37 @@ public class OthelloAI
             if (trigger) return evaluationFunction(_gamedata);
 
             //スキップする処理
+            _recursionsCount++;
             int score = -Negamax(_depth - 1, _gamedata, true);
+            maxScore = Math.Max(maxScore, score);
         }
-        else
+
+        foreach (var move in validMoves)
         {
-            foreach (var move in validMoves)
-            {
-                MainGameData newGameData = _gamedata.Clone();
-                PlacePiece(move.x, move.y, newGameData);
-                int score = -Negamax(_depth - 1, newGameData, false);
-                maxScore = Math.Max(maxScore, score);
-            }
+            MainGameData newGameData = _gamedata.Clone();
+            _recursionsCount++;
+            PlacePiece(move.x, move.y, newGameData);
+            int score = -Negamax(_depth - 1, newGameData, false);
+            maxScore = Math.Max(maxScore, score);
         }
+        return maxScore;
     }
 
-    private string BoardToString(int[,] board)
-    {
-        int size = board.GetLength(0);
-        var sb = new System.Text.StringBuilder();
-        for (int y = 0; y < size; y++)
-        {
-            for (int x = 0; x < size; x++)
-            {
-                sb.Append(board[y, x] switch { 0 => "-", 1 => "●", 2 => "○", _ => "?" });
-                sb.Append(" ");
-            }
-            sb.AppendLine();
-        }
-        return sb.ToString();
-    }
-
+    // private string BoardToString(int[,] board)
+    // {
+    //     int size = board.GetLength(0);
+    //     var sb = new System.Text.StringBuilder();
+    //     for (int y = 0; y < size; y++)
+    //     {
+    //         for (int x = 0; x < size; x++)
+    //         {
+    //             sb.Append(board[y, x] switch { 0 => "-", 1 => "●", 2 => "○", _ => "?" });
+    //             sb.Append(" ");
+    //         }
+    //         sb.AppendLine();
+    //     }
+    //     return sb.ToString();
+    // }
 }
 
 public enum AIStrength
