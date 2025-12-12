@@ -6,12 +6,12 @@ using static OthelloDebugLog;
 public class OthelloAI
 {
     private int _depth = 0;
-    public bool _isDebug = false; // デバッグログ出力フラグ
     private int _recursionsCount; //計算回数
-    private StreamWriter? sw;
 
-    public (int x, int y) AI(List<(int x, int y)> _validMoves, MainGameData _gamedata)
+    public (int x, int y) AI(List<(int x, int y)> _validMoves, MainGameData _gamedata, bool _isDebug)
     {
+        OthelloDebugLog._isDebug = _isDebug;
+
         (int, int) bestMove = (0, 0);//仮です
         _recursionsCount = 0;
         StartLogging();
