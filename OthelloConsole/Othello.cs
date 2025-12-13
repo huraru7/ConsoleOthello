@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using static OthelloSystem;
+using static OthelloDebugLog;
 
 public class Othello
 {
@@ -56,6 +57,7 @@ public class Othello
         Othello _game = new Othello();
         _game._gameData._tilesSize = 8;
         _game.DataReset();
+        StartGameLog();
         Console.WriteLine("オセロへようこそ！");
         Console.WriteLine("モード選択:AI対戦(1) 2人対戦(2)");
         string input = Console.ReadLine() ?? "";
@@ -115,6 +117,8 @@ public class Othello
     /// </summary>
     async Task RunGame()
     {
+        GameLog($"ゲーム開始 モード;{_gameData._gameMode} 盤面サイズ:{_gameData._tilesSize} AI強さ:{_gameData._AIStrength}");
+        GameLog("=======================================================");
         while (true)
         {
             _validMoves = InstallationArea(_gameData);
@@ -149,7 +153,6 @@ public class Othello
                 Console.WriteLine($"AIの手{x},{y}を選択しました。");
                 input = $"{x}{y}";
 
-                if (_isDebug) Console.ReadLine();
                 await Task.Delay(3500); // 3.5秒待機
             }
             else
@@ -161,7 +164,9 @@ public class Othello
             if (input == "end")
             {
                 Console.Clear();
+                StopGameLog();
                 Console.WriteLine("ゲームを終了しました");
+                GameLog("ゲームが中断されました");
                 return;
             }
 
@@ -176,6 +181,7 @@ public class Othello
 
             Console.Clear();
 
+            GameLog($"{row}, {col}に駒を設置");
             if (_gameData._gameTurn == GameTurn.AI)
             {
                 Console.WriteLine($"AIの選択した手:{row}, {col}");
@@ -226,11 +232,13 @@ public class Othello
     bool GameChecker()
     {
         bool hasEmpty;
+
         hasEmpty = _gameData._tiles.Cast<int>().Any(t => t == 0);
         if (_consecutivePassCount >= 2) hasEmpty = false;
 
         if (!hasEmpty)
         {
+            StopGameLog();
             Console.WriteLine(ConsoleWriteBoard());
             Console.WriteLine("=======================================================");
             if (_consecutivePassCount >= 2)
@@ -302,6 +310,7 @@ public class Othello
 
         builder.Clear();
         builder.Append($"ターン数: {_gameData._turnConter}  ");
+
         if (_gameData._gameTurn == GameTurn.prayer1)
         {
             builder.Append("現在のターン: ●\n");
@@ -340,6 +349,7 @@ public class Othello
             _gameData._tiles[move.x - 1, move.y - 1] = 0;
         }
 
+        GameLog(builder.ToString());
         return builder.ToString();
     }
 }

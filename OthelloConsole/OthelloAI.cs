@@ -14,7 +14,7 @@ public class OthelloAI
 
         (int, int) bestMove = (0, 0);//仮です
         _recursionsCount = 0;
-        StartLogging();
+        StartAILog();
 
         switch (_gamedata._AIStrength)
         {
@@ -45,7 +45,7 @@ public class OthelloAI
         DebugLog("=============Ai評価終了=============");
         DebugLog($"探索深さ:{_maxDepth} 総計算手順回数：{_recursionsCount} 最良手:{bestMove} スコア:{maxScore}");
 
-        StopLogging();
+        StopAILog();
         return bestMove;
     }
 
