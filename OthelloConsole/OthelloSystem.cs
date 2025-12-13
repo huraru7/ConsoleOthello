@@ -1,15 +1,11 @@
-using System;
-
 public static class OthelloSystem
 {
-
     /// <summary>
-    /// 駒をおき、反転の処理をします。
+    /// 駒を置く処理をします
     /// </summary>
-    /// <param name="x">駒を置く座標(x座標)</param>
-    /// <param name="y">駒を置く座標(y座標)</param>
-    /// <param name="tiles">盤面</param>
-    /// <param name="_turnNum">ターン(数字)</param>
+    /// <param name="x">置く位置(x座標)</param>
+    /// <param name="y">置く位置(y座標)</param>
+    /// <param name="_gameData">ゲームデータ</param>
     public static void PlacePiece(int x, int y, MainGameData _gameData)
     {
         x -= 1; y -= 1;//内部座標に修正
@@ -56,6 +52,7 @@ public static class OthelloSystem
     /// <summary>
     /// 設置可能な場所を出します
     /// </summary>
+    /// <param name="_gameData">ゲームデータ</param>
     /// <returns>おける場所の座標リスト</returns>
     public static List<(int x, int y)> InstallationArea(MainGameData _gameData)
     {

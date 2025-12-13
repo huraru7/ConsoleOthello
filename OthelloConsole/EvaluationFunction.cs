@@ -1,5 +1,3 @@
-using System;
-
 public static class EvaluationFunction
 {
     /// <summary>
@@ -10,8 +8,6 @@ public static class EvaluationFunction
     public static int evaluationFunction(MainGameData _gameData)
     {
         int evaluationScore = 0;
-        //!今まで認識を間違えていました、minimax法なので評価基準は全て自分にとっての評価を行うべきです。
-        //!おそらくminimax法を反転させた上でnagamax法を使っていたのが今までのバグの原因かもしれません。
         evaluationScore += EvaluatePosition(_gameData._tiles, _gameData._turnNum);
 
         return evaluationScore;

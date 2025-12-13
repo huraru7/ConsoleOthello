@@ -1,5 +1,3 @@
-using System;
-
 public struct MainGameData
 {
     public int[,] _tiles;

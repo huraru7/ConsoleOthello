@@ -1,7 +1,6 @@
 using static OthelloSystem;
 using static EvaluationFunction;
 using static OthelloDebugLog;
-using System.Diagnostics;
 
 public class OthelloAI
 {
