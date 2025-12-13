@@ -26,6 +26,7 @@ public class Othello
     public OthelloAI _ai = new OthelloAI();
     private int _player1FrameCounter = 2;
     private int _player2FrameCounter = 2;
+    private bool _isDebug = false;
     private List<(int x, int y)> _validMoves = new List<(int x, int y)>();
     private int _consecutivePassCount = 0; // 連続パス回数のカウント
 
@@ -81,7 +82,7 @@ public class Othello
         string command = Console.ReadLine() ?? "";
         if (command == "debug")
         {
-            _game._ai._isDebug = true; // デバッグモードon
+            _game._isDebug = true; // デバッグモードon
             Console.WriteLine("デバッグモードを有効化しました。");
             Console.ReadLine();
         }
@@ -125,11 +126,11 @@ public class Othello
             if (_gameData._gameTurn == GameTurn.AI)
             {
                 Console.WriteLine("=======================================================");
-                (int x, int y) = _ai.AI(_validMoves, _gameData);
+                (int x, int y) = _ai.AI(_validMoves, _gameData, _isDebug);
                 Console.WriteLine($"AIの手{x},{y}を選択しました。");
                 input = $"{x}{y}";
 
-                if (_ai._isDebug) Console.ReadLine();
+                if (_isDebug) Console.ReadLine();
                 await Task.Delay(3500); // 3.5秒待機
             }
             else
