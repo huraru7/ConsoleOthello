@@ -5,20 +5,38 @@ public class Othello
 {
     void DataReset()
     {
-        _gameData._tiles = new int[,]
+        // 盤面サイズが設定されていない(0)場合は既定値8を使用
+        int size = _gameData._tilesSize > 0 ? _gameData._tilesSize : 8;
+
+        // 盤面サイズは偶数である必要がある
+        if (size % 2 != 0)
         {
-            {0,0,0,0,0,0,0,0},
-            {0,0,0,0,0,0,0,0},
-            {0,0,0,0,0,0,0,0},
-            {0,0,0,2,1,0,0,0},
-            {0,0,0,1,2,0,0,0},
-            {0,0,0,0,0,0,0,0},
-            {0,0,0,0,0,0,0,0},
-            {0,0,0,0,0,0,0,0},
-        };
+            Console.WriteLine($"Error: 盤面サイズ(size={size})は偶数である必要があります。");
+            throw new System.ArgumentException("盤面サイズは偶数にしてください。");
+        }
+
+        _gameData._tiles = new int[size, size];
+
+        // 全て0で初期化 (int配列は既に0で初期化されるが明示的に残す)
+        for (int i = 0; i < size; i++)
+        {
+            for (int j = 0; j < size; j++)
+            {
+                _gameData._tiles[i, j] = 0;
+            }
+        }
+
+        // 中央の初期駒を設定
+        int mid = size / 2; // 例: size=8 -> mid=4, 中央は indices 3,4
+        _gameData._tiles[mid - 1, mid - 1] = 2;
+        _gameData._tiles[mid - 1, mid] = 1;
+        _gameData._tiles[mid, mid - 1] = 1;
+        _gameData._tiles[mid, mid] = 2;
+
         _gameData._gameTurn = GameTurn.prayer1;
         _gameData._turnConter = 1; //ターン数
         _gameData._turnNum = 1; // 1:prayer1  2:prayer2 or AI
+        _gameData._tilesSize = size;
     }
 
     private StringBuilder builder = new();
@@ -36,6 +54,7 @@ public class Othello
     public static async Task Main()
     {
         Othello _game = new Othello();
+        _game._gameData._tilesSize = 8;
         _game.DataReset();
         Console.WriteLine("オセロへようこそ！");
         Console.WriteLine("モード選択:AI対戦(1) 2人対戦(2)");
@@ -228,7 +247,7 @@ public class Othello
             else if (_player1FrameCounter > _player2FrameCounter)
                 Console.WriteLine("プレイヤー(白)の勝ち！");
             else
-                Console.WriteLine("引き分け");
+                Console.WriteLine("引き分けです！");
             Console.WriteLine("=======================================================");
             return true;
         }
@@ -292,12 +311,23 @@ public class Othello
             builder.Append("現在のターン: ○\n");
         }
         builder.Append($"プレイヤー: {_player1FrameCounter}個    敵: {_player2FrameCounter}個\n");
-        builder.Append("   1 2 3 4 5 6 7 8\n  ┏===============\n");
 
-        for (int i = 0; i < 8; i++)
+        builder.Append("   ");
+        for (int i = 0; i < _gameData._tilesSize; i++)
+        {
+            builder.Append($"{i + 1} ");
+        }
+        builder.Append("\n  ┏");
+        for (int i = 0; i < _gameData._tilesSize - 1; i++)
+        {
+            builder.Append("==");
+        }
+        builder.Append("=\n");
+
+        for (int i = 0; i < _gameData._tilesSize; i++)
         {
             builder.Append($"{i + 1} |");
-            for (int j = 0; j < 8; j++)
+            for (int j = 0; j < _gameData._tilesSize; j++)
             {
                 builder.Append(_gameData._tiles[i, j] switch { 0 => "- ", 1 => "● ", 2 => "○ ", 3 => "# ", _ => "? " });
             }

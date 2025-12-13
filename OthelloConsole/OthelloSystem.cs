@@ -21,7 +21,10 @@ public static class OthelloSystem
             int nx = x + dx[i];
             int ny = y + dy[i];
 
-            while (nx >= 0 && nx < 8 && ny >= 0 && ny < 8)
+            int sizeX = _gameData._tiles.GetLength(0);
+            int sizeY = _gameData._tiles.GetLength(1);
+
+            while (nx >= 0 && nx < sizeX && ny >= 0 && ny < sizeY)
             {
                 if (_gameData._tiles[nx, ny] == (_gameData._turnNum == 1 ? 2 : 1)) // 相手の駒
                 {
@@ -77,7 +80,9 @@ public static class OthelloSystem
                         int y = j + dy;
                         bool hasOpponentPiece = false;
 
-                        while (x >= 0 && x < 8 && y >= 0 && y < 8)
+                        int sizeX = _gameData._tiles.GetLength(0);
+                        int sizeY = _gameData._tiles.GetLength(1);
+                        while (x >= 0 && x < sizeX && y >= 0 && y < sizeY)
                         {
 
                             if (_gameData._tiles[x, y] == (_gameData._turnNum == 1 ? 2 : 1)) // 相手の駒

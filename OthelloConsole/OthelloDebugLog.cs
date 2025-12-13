@@ -6,9 +6,9 @@ public static class OthelloDebugLog
     private static Stopwatch thinkTimer = new Stopwatch();
     public static void StartLogging()
     {
-        if (!_isDebug) return;
         thinkTimer.Reset();
         thinkTimer.Start();
+        if (!_isDebug) return;
 
         string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
         string logFile = $"Log/AIlog_{timestamp}.txt";
@@ -18,9 +18,9 @@ public static class OthelloDebugLog
 
     public static void StopLogging()
     {
-        if (!_isDebug) return;
         thinkTimer.Stop();
-        DebugLog($"AI思考時間: {thinkTimer.ElapsedMilliseconds} ms");
+        Console.WriteLine($"AI思考時間: {thinkTimer.ElapsedMilliseconds} ms");
+        if (!_isDebug) return;
 
         sw?.Flush();
         sw?.Close();

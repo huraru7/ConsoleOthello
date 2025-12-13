@@ -14,27 +14,46 @@ public static class EvaluationFunction
     }
     private static int EvaluatePosition(int[,] _tiles, int _turnNum)
     {
-        int[,] scoreSheet = new int[,]
-        {
-            { 150, -20, 0, -1, -1, 0, -20, 150},
-            { -20, -15, -3, -3, -3, -3, -15, -20 },
-            { 0, -3, 0, -1, -1, 0, -3, 0 },
-            { -1, -3, -1, -1, -1, -1, -3, -1 },
-            { -1, -3, -1, -1, -1, -1, -3, -1 },
-            { 0, -3, 0, -1, -1, 0, -3, 0 },
-            { -20, -15, -3, -3, -3, -3, -15, -20 },
-            { 150, -20, 0, -1, -1, 0, -20, 150 },
-        };
-
         int score = 0;
-        for (int y = 0; y < 8; y++)
+        int sizeX = _tiles.GetLength(0);
+        int sizeY = _tiles.GetLength(1);
+
+        if (sizeX == 8 && sizeY == 8)
         {
-            for (int x = 0; x < 8; x++)
+            int[,] scoreSheet = new int[,]
             {
-                if (_tiles[x, y] == _turnNum)
-                    score += scoreSheet[x, y];
+                { 250, -30, 0, -1, -1, 0, -30, 250},
+                { -30, -15, -3, -3, -3, -3, -15, -30 },
+                { 0, -3, 0, -1, -1, 0, -3, 0 },
+                { -1, -3, -1, -1, -1, -1, -3, -1 },
+                { -1, -3, -1, -1, -1, -1, -3, -1 },
+                { 0, -3, 0, -1, -1, 0, -3, 0 },
+                { -30, -15, -3, -3, -3, -3, -15, -30 },
+                { 250, -30, 0, -1, -1, 0, -30, 250 },
+            };
+
+            for (int y = 0; y < 8; y++)
+            {
+                for (int x = 0; x < 8; x++)
+                {
+                    if (_tiles[x, y] == _turnNum)
+                        score += scoreSheet[x, y];
+                }
             }
         }
+        else
+        {
+            // 8x8以外は簡易評価: 自身の駒数をそのままスコアにする
+            for (int y = 0; y < sizeY; y++)
+            {
+                for (int x = 0; x < sizeX; x++)
+                {
+                    if (_tiles[x, y] == _turnNum) score += 1;
+                    else if (_tiles[x, y] != 0) score -= 1;
+                }
+            }
+        }
+
         return score;
     }
 }
