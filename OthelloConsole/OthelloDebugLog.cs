@@ -29,6 +29,7 @@ public static class OthelloDebugLog
     {
         thinkTimer.Stop();
         Console.WriteLine($"AI思考時間: {thinkTimer.ElapsedMilliseconds} ms");
+        DebugLog($"AI思考時間: {thinkTimer.ElapsedMilliseconds} ms");
         if (!_isDebug) return;
 
         sw?.Flush();

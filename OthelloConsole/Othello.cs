@@ -66,7 +66,7 @@ public class Othello
         {
             case "1":
                 Console.WriteLine("AI対戦モードを選択しました。");
-                _game._gameData._gameMode = GameMode.AIvsPlayer;
+                _game._gameData._gameMode = GameMode.PlayervsAI;
                 break;
             case "2":
                 Console.WriteLine("2人対戦モードを選択しました。");
@@ -77,7 +77,7 @@ public class Othello
                 _game._gameData._gameMode = GameMode.PlayervsPlayer;
                 break;
         }
-        if (_game._gameData._gameMode == GameMode.AIvsPlayer)
+        if (_game._gameData._gameMode == GameMode.PlayervsAI)
         {
             Console.WriteLine("AIの強さを選択してください:初心者(1) 普通(2) 上級者(3) プロ(未実装)");
             string aiInput = Console.ReadLine() ?? "";
@@ -132,7 +132,7 @@ public class Othello
                 Console.WriteLine("置ける場所がありません。ターンをスキップします。");
                 Console.WriteLine("=======================================================");
                 _consecutivePassCount++;
-                TurnChange();
+                TurnChange(_gameData);
                 _gameData._turnConter++;
                 continue;
             }
@@ -153,7 +153,7 @@ public class Othello
                 Console.WriteLine($"AIの手{x},{y}を選択しました。");
                 input = $"{x}{y}";
 
-                await Task.Delay(3500); // 3.5秒待機
+                await Task.Delay(3000); // 3秒待機
             }
             else
             {
@@ -164,9 +164,9 @@ public class Othello
             if (input == "end")
             {
                 Console.Clear();
-                StopGameLog();
                 Console.WriteLine("ゲームを終了しました");
                 GameLog("ゲームが中断されました");
+                StopGameLog();
                 return;
             }
 
@@ -195,34 +195,8 @@ public class Othello
             (_player1FrameCounter, _player2FrameCounter) = counting(_gameData._tiles);
             _consecutivePassCount = 0; // パスをリセット
 
-            TurnChange();
+            TurnChange(_gameData);
             _gameData._turnConter++;
-        }
-    }
-
-    /// <summary>
-    /// ターンを変更します
-    /// </summary>
-    void TurnChange()
-    {
-        switch (_gameData._gameTurn)
-        {
-            case GameTurn.prayer1:
-                switch (_gameData._gameMode)
-                {
-                    case GameMode.AIvsPlayer:
-                        _gameData._gameTurn = GameTurn.AI;
-                        break;
-                    case GameMode.PlayervsPlayer:
-                        _gameData._gameTurn = GameTurn.prayer2;
-                        break;
-                }
-                _gameData._turnNum = 2;
-                break;
-            case GameTurn.prayer2 or GameTurn.AI:
-                _gameData._gameTurn = GameTurn.prayer1;
-                _gameData._turnNum = 1;
-                break;
         }
     }
 

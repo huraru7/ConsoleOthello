@@ -117,6 +117,32 @@ public static class OthelloSystem
     }
 
     /// <summary>
+    /// ターンを変更します
+    /// </summary>
+    public static void TurnChange(MainGameData _gameData)
+    {
+        switch (_gameData._gameTurn)
+        {
+            case GameTurn.prayer1:
+                switch (_gameData._gameMode)
+                {
+                    case GameMode.PlayervsAI:
+                        _gameData._gameTurn = GameTurn.AI;
+                        break;
+                    case GameMode.PlayervsPlayer:
+                        _gameData._gameTurn = GameTurn.prayer2;
+                        break;
+                }
+                _gameData._turnNum = 2;
+                break;
+            case GameTurn.prayer2 or GameTurn.AI:
+                _gameData._gameTurn = GameTurn.prayer1;
+                _gameData._turnNum = 1;
+                break;
+        }
+    }
+
+    /// <summary>
     /// 駒の数を数えます
     /// </summary>
     /// <param name="tiles">盤面</param>

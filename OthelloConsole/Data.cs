@@ -30,6 +30,6 @@ public enum GameTurn
 }
 public enum GameMode
 {
-    AIvsPlayer,
+    PlayervsAI,
     PlayervsPlayer
 }
