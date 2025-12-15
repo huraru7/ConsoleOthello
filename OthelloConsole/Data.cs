@@ -24,12 +24,12 @@ public struct MainGameData
 
 public enum GameTurn
 {
-    prayer1,
-    prayer2,
+    prayer,
     AI
 }
 public enum GameMode
 {
     PlayervsAI,
-    PlayervsPlayer
+    PlayervsPlayer,
+    AIvsAI
 }

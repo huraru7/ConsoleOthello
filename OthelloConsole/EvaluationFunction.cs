@@ -1,24 +1,37 @@
+using static LibraryGameData;
+using static OthelloSystem;
+
 public static class EvaluationFunction
 {
     /// <summary>
     /// 評価関数を回します
     /// </summary>
-    /// <param name="_gameData"></param>
+    /// <param name="_gameData">ゲームデータ</param>
     /// <returns>その盤面の評価値</returns>
-    public static int evaluationFunction(MainGameData _gameData)
+    public static int EvaFunction(MainGameData _gameData)
     {
+        MainGameData _newGameData = _gameData.Clone();
+        var test = Counting(_newGameData._tiles);
+        int PieceCount = test.Item1 + test.Item2;
         int evaluationScore = 0;
-        evaluationScore += EvaluatePosition(_gameData._tiles, _gameData._turnNum);
+
+        evaluationScore += EvaluatePosition(_newGameData) * 24; //安全性
+        evaluationScore += PossiDility(_newGameData) * 10; //可能性
+        evaluationScore += QuantityDifference(_newGameData) * 1; //有利性
 
         return evaluationScore;
     }
-    private static int EvaluatePosition(int[,] _tiles, int _turnNum)
+
+    /// <summary>
+    /// 駒の位置に対する評価
+    /// </summary>
+    /// <param name="_gameData">ゲームデータ</param>
+    /// <returns>駒の位置に対する評価値</returns>
+    private static int EvaluatePosition(MainGameData _gameData)
     {
         int score = 0;
-        int sizeX = _tiles.GetLength(0);
-        int sizeY = _tiles.GetLength(1);
 
-        if (sizeX == 8 && sizeY == 8)
+        if (_gameData._tilesSize == 8)
         {
             int[,] scoreSheet = new int[,]
             {
@@ -36,24 +49,39 @@ public static class EvaluationFunction
             {
                 for (int x = 0; x < 8; x++)
                 {
-                    if (_tiles[x, y] == _turnNum)
+                    if (_gameData._tiles[x, y] == _gameData._turnNum)
                         score += scoreSheet[x, y];
-                }
-            }
-        }
-        else
-        {
-            // 8x8以外は簡易評価: 自身の駒数をそのままスコアにする
-            for (int y = 0; y < sizeY; y++)
-            {
-                for (int x = 0; x < sizeX; x++)
-                {
-                    if (_tiles[x, y] == _turnNum) score += 1;
-                    else if (_tiles[x, y] != 0) score -= 1;
                 }
             }
         }
 
         return score;
+    }
+
+    /// <summary>
+    /// 設置可能な場所の数に対する評価
+    /// </summary>
+    /// <param name="_gameData">ゲームデータ</param>
+    /// <returns>相手が設置可能な場所の数</returns>
+    private static int PossiDility(MainGameData _gameData)
+    {
+        _gameData._gameTurn = TurnChange(_gameData._gameTurn);
+        _gameData._turnNum = _gameData._gameTurn == GameTurn.prayer ? 1 : 2;
+        var result = InstallationArea(_gameData);
+        return result.Count;
+    }
+
+    /// <summary>
+    /// 駒の数の差に対する評価
+    /// </summary>
+    /// <param name="_gameData">ゲームデータ</param>
+    /// <returns>駒の数の差</returns>
+    private static int QuantityDifference(MainGameData _gameData)
+    {
+        var count = Counting(_gameData._tiles);
+        if (_gameData._turnNum == 1)
+            return count.Item1 - count.Item2;
+        else
+            return count.Item2 - count.Item1;
     }
 }

@@ -34,7 +34,7 @@ public class Othello
         _gameData._tiles[mid, mid - 1] = 1;
         _gameData._tiles[mid, mid] = 2;
 
-        _gameData._gameTurn = GameTurn.prayer1;
+        _gameData._gameTurn = GameTurn.prayer;
         _gameData._turnConter = 1; //ターン数
         _gameData._turnNum = 1; // 1:prayer1  2:prayer2 or AI
         _gameData._tilesSize = size;
@@ -132,7 +132,8 @@ public class Othello
                 Console.WriteLine("置ける場所がありません。ターンをスキップします。");
                 Console.WriteLine("=======================================================");
                 _consecutivePassCount++;
-                TurnChange(_gameData);
+                _gameData._gameTurn = TurnChange(_gameData._gameTurn);
+                _gameData._turnNum = _gameData._gameTurn == GameTurn.prayer ? 1 : 2;
                 _gameData._turnConter++;
                 continue;
             }
@@ -192,10 +193,12 @@ public class Othello
             }
             Console.WriteLine("=======================================================");
             PlacePiece(row, col, _gameData);
-            (_player1FrameCounter, _player2FrameCounter) = counting(_gameData._tiles);
+            (_player1FrameCounter, _player2FrameCounter) = Counting(_gameData._tiles);
             _consecutivePassCount = 0; // パスをリセット
 
-            TurnChange(_gameData);
+            _gameData._gameTurn = TurnChange(_gameData._gameTurn);
+            _gameData._turnNum = _gameData._gameTurn == GameTurn.prayer ? 1 : 2;
+
             _gameData._turnConter++;
         }
     }
@@ -212,8 +215,8 @@ public class Othello
 
         if (!hasEmpty)
         {
-            StopGameLog();
             Console.WriteLine(ConsoleWriteBoard());
+            StopGameLog();
             Console.WriteLine("=======================================================");
             if (_consecutivePassCount >= 2)
             {
@@ -285,7 +288,7 @@ public class Othello
         builder.Clear();
         builder.Append($"ターン数: {_gameData._turnConter}  ");
 
-        if (_gameData._gameTurn == GameTurn.prayer1)
+        if (_gameData._gameTurn == GameTurn.prayer)
         {
             builder.Append("現在のターン: ●\n");
         }

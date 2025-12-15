@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 public static class OthelloSystem
 {
     /// <summary>
@@ -119,27 +121,9 @@ public static class OthelloSystem
     /// <summary>
     /// ターンを変更します
     /// </summary>
-    public static void TurnChange(MainGameData _gameData)
+    public static GameTurn TurnChange(GameTurn _gameTurn)
     {
-        switch (_gameData._gameTurn)
-        {
-            case GameTurn.prayer1:
-                switch (_gameData._gameMode)
-                {
-                    case GameMode.PlayervsAI:
-                        _gameData._gameTurn = GameTurn.AI;
-                        break;
-                    case GameMode.PlayervsPlayer:
-                        _gameData._gameTurn = GameTurn.prayer2;
-                        break;
-                }
-                _gameData._turnNum = 2;
-                break;
-            case GameTurn.prayer2 or GameTurn.AI:
-                _gameData._gameTurn = GameTurn.prayer1;
-                _gameData._turnNum = 1;
-                break;
-        }
+        return _gameTurn == GameTurn.prayer ? GameTurn.AI : GameTurn.prayer;
     }
 
     /// <summary>
@@ -147,7 +131,7 @@ public static class OthelloSystem
     /// </summary>
     /// <param name="tiles">盤面</param>
     /// <returns>(プレイヤー1 , プレイヤー2)</returns>
-    public static (int, int) counting(int[,] tiles)
+    public static (int, int) Counting(int[,] tiles)
     {
         int counter1 = 0;
         int counter2 = 0;
