@@ -15,9 +15,24 @@ public static class EvaluationFunction
         int PieceCount = test.Item1 + test.Item2;
         int evaluationScore = 0;
 
-        evaluationScore += EvaluatePosition(_newGameData) * 24; //安全性
-        evaluationScore += PossiDility(_newGameData) * 10; //可能性
-        evaluationScore += QuantityDifference(_newGameData) * 1; //有利性
+        if (PieceCount >= 54) //終盤
+        {
+            evaluationScore += EvaluatePosition(_newGameData) * 15; //安全性
+            evaluationScore += PossiDility(_newGameData) * 15; //可能性
+            evaluationScore += QuantityDifference(_newGameData) * 20; //有利性
+        }
+        else if (PieceCount >= 20) //中盤
+        {
+            evaluationScore += EvaluatePosition(_newGameData) * 25; //安全性
+            evaluationScore += PossiDility(_newGameData) * 10; //可能性
+            evaluationScore += QuantityDifference(_newGameData) * 15; //有利性
+        }
+        else //序盤
+        {
+            evaluationScore += EvaluatePosition(_newGameData) * 30; //安全性
+            evaluationScore += PossiDility(_newGameData) * 10; //可能性
+            evaluationScore += QuantityDifference(_newGameData) * 10; //有利性
+        }
 
         return evaluationScore;
     }
@@ -35,14 +50,14 @@ public static class EvaluationFunction
         {
             int[,] scoreSheet = new int[,]
             {
-                { 250, -30, 0, -1, -1, 0, -30, 250},
-                { -30, -15, -3, -3, -3, -3, -15, -30 },
-                { 0, -3, 0, -1, -1, 0, -3, 0 },
-                { -1, -3, -1, -1, -1, -1, -3, -1 },
-                { -1, -3, -1, -1, -1, -1, -3, -1 },
-                { 0, -3, 0, -1, -1, 0, -3, 0 },
-                { -30, -15, -3, -3, -3, -3, -15, -30 },
-                { 250, -30, 0, -1, -1, 0, -30, 250 },
+                { 250, -30, 000, -01, -01, 000, -30, 250 },
+                { -30, -15, -03, -03, -03, -03, -15, -30 },
+                { 000, -03, 000, -01, -01, 000, -03, 000 },
+                { -01, -03, -01, -01, -01, -01, -03, -01 },
+                { -01, -03, -01, -01, -01, -01, -03, -01 },
+                { 000, -03, 000, -01, -01, 000, -03, 000 },
+                { -30, -15, -03, -03, -03, -03, -15, -30 },
+                { 250, -30, 000, -01, -01, 000, -30, 250 },
             };
 
             for (int y = 0; y < 8; y++)
