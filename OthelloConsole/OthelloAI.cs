@@ -7,7 +7,6 @@ public class OthelloAI
     private int _maxDepth;
     private int _depth;
     private int _recursionsCount; //計算回数
-
     public (int x, int y) AI(List<(int x, int y)> _validMoves, MainGameData _gamedata, bool _isDebug)
     {
         OthelloDebugLog._isDebug = _isDebug;
@@ -20,7 +19,8 @@ public class OthelloAI
         {
             case AIStrength.nuub: _maxDepth = 2; break;
             case AIStrength.normal: _maxDepth = 4; break;
-            case AIStrength.professional: _maxDepth = 6; break;
+            case AIStrength.expert: _maxDepth = 6; break;
+            case AIStrength.professional: _maxDepth = 8; break;
         }
         _depth = _maxDepth;
 
@@ -33,8 +33,8 @@ public class OthelloAI
             _recursionsCount++;
             DebugLog($"試行純手:({move.x},{move.y}) 深さ:{_depth}スタート");
             PlacePiece(move.x, move.y, newGameData);
-            DebugLog($"盤面状態:\n{BoardToString(newGameData._tiles)}");
-            int score = -Negamax(newGameData, _depth - 1, false);
+            // DebugLog($"盤面状態:\n{BoardToString(newGameData._tiles)}");
+            int score = -Negamax(newGameData, _depth - 1, int.MinValue, int.MaxValue, false);
             if (score > maxScore)
             {
                 DebugLog($"スコア更新:({move.x},{move.y}) スコア:{score}");
@@ -50,7 +50,7 @@ public class OthelloAI
         return bestMove;
     }
 
-    private int Negamax(MainGameData _gamedata, int _depth, bool trigger)
+    private int Negamax(MainGameData _gamedata, int _depth, int alpha, int beta, bool trigger)
     {
         string indent = new string(' ', (_maxDepth - _depth) * 2) + " ";
         _gamedata._gameTurn = _depth % 2 == 0 ? GameTurn.AI : GameTurn.prayer;
@@ -63,8 +63,7 @@ public class OthelloAI
             return evaluation;
         }
 
-        int maxScore = int.MinValue;
-        List<(int x, int y)> validMoves = InstallationArea(_gamedata);
+        var validMoves = InstallationArea(_gamedata);
         if (validMoves.Count == 0)
         {
             //2回連続で置けない場合はゲームは終了している。
@@ -77,9 +76,11 @@ public class OthelloAI
             //スキップする処理
             _recursionsCount++;
             DebugLog($"{indent}▶ スキップ発生");
-            int score = -Negamax(_gamedata, _depth - 1, true);
-            maxScore = Math.Max(maxScore, score);
+            int score = -Negamax(_gamedata, _depth - 1, -beta, -alpha, true);
+            return Math.Max(alpha, score);
         }
+
+        int bestScore = int.MinValue;
 
         foreach (var move in validMoves)
         {
@@ -87,12 +88,19 @@ public class OthelloAI
             _recursionsCount++;
             PlacePiece(move.x, move.y, newGameData);
             DebugLog($"{indent}▶︎試行純手:({move.x},{move.y}) 深さ:{_depth}スタート");
-            DebugLog($"{indent}盤面状態:\n{BoardToString(newGameData._tiles)}");
-            int score = -Negamax(newGameData, _depth - 1, false);
-            maxScore = Math.Max(maxScore, score);
+            // DebugLog($"{indent}盤面状態:\n{BoardToString(newGameData._tiles)}");
+            int score = -Negamax(newGameData, _depth - 1, -beta, -alpha, false);
+            bestScore = Math.Max(bestScore, score);
+            alpha = Math.Max(alpha, score);
+
+            if (alpha >= beta)
+            {
+                DebugLog($"{indent}▶︎αβカット発生 深さ:{_depth} α値:{alpha} >= β値:{beta}");
+                break;
+            }
         }
-        DebugLog($"{indent}▶︎深さ:{_depth} 最大スコア:{maxScore}");
-        return maxScore;
+        DebugLog($"{indent}▶︎深さ:{_depth} 最大スコア:{bestScore}");
+        return alpha;
     }
 
     private string BoardToString(int[,] board)
@@ -116,5 +124,6 @@ public enum AIStrength
 {
     nuub,
     normal,
+    expert,
     professional
 }

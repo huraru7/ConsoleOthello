@@ -79,7 +79,7 @@ public class Othello
         }
         if (_game._gameData._gameMode == GameMode.PlayervsAI)
         {
-            Console.WriteLine("AIの強さを選択してください:初心者(1) 普通(2) 上級者(3) プロ(未実装)");
+            Console.WriteLine("AIの強さを選択してください:初心者(1) 普通(2) 上級者(3) プロ(4)");
             string aiInput = Console.ReadLine() ?? "";
             switch (aiInput)
             {
@@ -90,6 +90,9 @@ public class Othello
                     _game._gameData._AIStrength = AIStrength.normal;
                     break;
                 case "3":
+                    _game._gameData._AIStrength = AIStrength.expert;
+                    break;
+                case "4":
                     _game._gameData._AIStrength = AIStrength.professional;
                     break;
                 default:
