@@ -59,7 +59,7 @@ public class Othello
         _game.DataReset();
         StartGameLog();
         Console.WriteLine("オセロへようこそ！");
-        Console.WriteLine("モード選択:AI対戦(1) 2人対戦(2)");
+        Console.WriteLine("モード選択:AI対戦(1) 2人対戦(2) AI対AI(3)");
         string input = Console.ReadLine() ?? "";
 
         switch (input)
@@ -72,12 +72,37 @@ public class Othello
                 Console.WriteLine("2人対戦モードを選択しました。");
                 _game._gameData._gameMode = GameMode.PlayervsPlayer;
                 break;
+            case "3":
+                Console.WriteLine("AI対AIモードを選択しました。");
+                _game._gameData._gameMode = GameMode.AIvsAI;
+                _game._gameData._gameTurn = GameTurn.AI;
+                _game._gameData._turnNum = 2;
+                break;
             default:
                 Console.WriteLine("無効な入力です。2人対戦モードに進みます。");
                 _game._gameData._gameMode = GameMode.PlayervsPlayer;
                 break;
         }
         if (_game._gameData._gameMode == GameMode.PlayervsAI)
+        {
+            Console.WriteLine("先行後攻を選択してください:先行(1) 後攻(2)");
+            string sizeInput = Console.ReadLine() ?? "";
+            switch (sizeInput)
+            {
+                case "1":
+                    Console.WriteLine("あなたは先行です。");
+                    break;
+                case "2":
+                    Console.WriteLine("あなたは後攻です。");
+                    _game._gameData._gameTurn = GameTurn.AI;
+                    _game._gameData._turnNum = 2;
+                    break;
+                default:
+                    Console.WriteLine("無効な入力です。先行に進みます。");
+                    break;
+            }
+        }
+        if (_game._gameData._gameMode == GameMode.PlayervsAI || _game._gameData._gameMode == GameMode.AIvsAI)
         {
             Console.WriteLine("AIの強さを選択してください:初心者(1) 普通(2) 上級者(3) プロ(4)");
             string aiInput = Console.ReadLine() ?? "";
@@ -135,8 +160,7 @@ public class Othello
                 Console.WriteLine("置ける場所がありません。ターンをスキップします。");
                 Console.WriteLine("=======================================================");
                 _consecutivePassCount++;
-                _gameData._gameTurn = TurnChange(_gameData._gameTurn);
-                _gameData._turnNum = _gameData._gameTurn == GameTurn.prayer ? 1 : 2;
+                _gameData = TurnChange(_gameData);
                 _gameData._turnConter++;
                 continue;
             }
@@ -199,8 +223,7 @@ public class Othello
             (_player1FrameCounter, _player2FrameCounter) = Counting(_gameData._tiles);
             _consecutivePassCount = 0; // パスをリセット
 
-            _gameData._gameTurn = TurnChange(_gameData._gameTurn);
-            _gameData._turnNum = _gameData._gameTurn == GameTurn.prayer ? 1 : 2;
+            _gameData = TurnChange(_gameData);
 
             _gameData._turnConter++;
         }
@@ -291,7 +314,7 @@ public class Othello
         builder.Clear();
         builder.Append($"ターン数: {_gameData._turnConter}  ");
 
-        if (_gameData._gameTurn == GameTurn.prayer)
+        if (_gameData._turnNum == 1)
         {
             builder.Append("現在のターン: ●\n");
         }
