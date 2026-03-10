@@ -5,3 +5,6 @@ obj/
 # VS / VS Code
 .vs/
 .vscode/
+
+# Log files
+Log/

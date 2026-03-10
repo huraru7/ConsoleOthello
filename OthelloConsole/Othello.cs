@@ -52,12 +52,19 @@ public class Othello
     /// <summary>
     /// スタート処理
     /// </summary>
-    public static async Task Main()
+    public static async Task Main(string[] args)
     {
         Othello _game = new Othello();
         _game._gameData._tilesSize = 8;
         _game.DataReset();
         StartGameLog();
+
+        // コマンドライン引数でデバッグモードを有効化
+        if (args.Contains("--debug"))
+        {
+            _game._isDebug = true;
+            Console.WriteLine("[INFO] デバッグモードを有効化しました (--debug)");
+        }
         Console.WriteLine("オセロへようこそ！");
         Console.WriteLine("モード選択:AI対戦(1) 2人対戦(2) AI対AI(3)");
         string input = Console.ReadLine() ?? "";
@@ -127,12 +134,12 @@ public class Othello
             }
         }
 
-        Console.WriteLine("Enterキーを押してゲームを開始...");
+        Console.WriteLine("Enterキーを押してゲームを開始... (\"debug\" と入力するとデバッグモードで起動)");
         string command = Console.ReadLine() ?? "";
         if (command == "debug")
         {
-            _game._isDebug = true; // デバッグモードon
-            Console.WriteLine("デバッグモードを有効化しました。");
+            _game._isDebug = true;
+            Console.WriteLine("[INFO] デバッグモードを有効化しました。");
             Console.ReadLine();
         }
 
@@ -181,7 +188,9 @@ public class Othello
                 Console.WriteLine($"AIの手{x},{y}を選択しました。");
                 input = $"{x}{y}";
 
-                await Task.Delay(3000); // 3秒待機
+                // デバッグOFF時は3秒待機（結果を確認できるように）
+                // デバッグON時は即座に進む（ログで詳細が見えるため）
+                if (!_isDebug) await Task.Delay(3000);
             }
             else
             {
@@ -284,7 +293,7 @@ public class Othello
             return true;
         }
 
-        var parts = System.Text.RegularExpressions.Regex.Split(input, "@\\D+")
+        var parts = System.Text.RegularExpressions.Regex.Split(input, "\\D+")
             .Where(s => !string.IsNullOrEmpty(s))
             .ToArray();
 

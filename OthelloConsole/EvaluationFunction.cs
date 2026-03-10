@@ -22,13 +22,13 @@ public static class EvaluationFunction
         else if (PieceCount >= 20) //中盤
         {
             evaluationScore += EvaluatePosition(_newGameData, me) * 25; //安全性
-            evaluationScore += PossiDility(_newGameData) * 10; //可能性
+            evaluationScore += Mobility(_newGameData, me) * 10; //機動力
             evaluationScore += QuantityDifference(_newGameData, me) * 15; //有利性
         }
         else //序盤
         {
             evaluationScore += EvaluatePosition(_newGameData, me) * 30; //安全性
-            evaluationScore += PossiDility(_newGameData) * 10; //可能性
+            evaluationScore += Mobility(_newGameData, me) * 10; //機動力
             evaluationScore += QuantityDifference(_newGameData, me) * 10; //有利性
         }
 
@@ -72,15 +72,18 @@ public static class EvaluationFunction
     }
 
     /// <summary>
-    /// 設置可能な場所の数に対する評価
+    /// 機動力評価（自分の合法手数 - 相手の合法手数を正規化）
     /// </summary>
-    /// <param name="_gameData">ゲームデータ</param>
-    /// <returns>相手が設置可能な場所の数</returns>
-    private static int PossiDility(MainGameData _gameData)
+    /// <param name="_gameData">ゲームデータ（meのターン想定）</param>
+    /// <returns>機動力スコア（自分が有利なら正、不利なら負）</returns>
+    private static int Mobility(MainGameData _gameData, int me)
     {
-        _gameData = TurnChange(_gameData);
-        var result = InstallationArea(_gameData);
-        return result.Count;
+        int myMoves = InstallationArea(_gameData).Count;
+        MainGameData opponent = TurnChange(_gameData);
+        int opponentMoves = InstallationArea(opponent).Count;
+        int total = myMoves + opponentMoves;
+        if (total == 0) return 0;
+        return 100 * (myMoves - opponentMoves) / total;
     }
 
     /// <summary>
