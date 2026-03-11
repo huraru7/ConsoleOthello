@@ -38,6 +38,12 @@ public class OthelloAI
     private bool _perfSolveTriggered; // 完全読みに移行したか
     private int _lastProgressLogNodes; // 完全読み進捗ログ用
 
+    // Killer Move: 各深さで2手記録（βカットを起こした手）
+    private int[,] _killerMoves = new int[0, 2];
+
+    // History Heuristic: 各マスのカットスコア（深さ²を加算、反復深化ごとに老化）
+    private readonly int[] _historyTable = new int[64];
+
     private readonly TranspositionTable _tt = new();
 
     // 完全読みに切り替える残り空きマス数の閾値
@@ -69,8 +75,16 @@ public class OthelloAI
         InfoLog($"AI思考開始 ({_gamedata._AIStrength}: 深さ{_maxDepth}  残りマス={board.EmptyCount})");
         _tt.Clear();
 
+        // Killer Move テーブル初期化
+        _killerMoves = new int[_maxDepth + 2, 2];
+        for (int d = 0; d < _maxDepth + 2; d++) { _killerMoves[d, 0] = -1; _killerMoves[d, 1] = -1; }
+
+        // History Heuristic テーブルリセット
+        Array.Clear(_historyTable, 0, 64);
+
         int bestMove = -1;
         EvalDetail bestDetail = default;
+        int prevScore = 0; // Aspiration Window 用（前の深さのスコア）
 
         // 反復深化
         for (int depth = 1; depth <= _maxDepth; depth++)
@@ -92,16 +106,44 @@ public class OthelloAI
                 break;
             }
 
+            // History Heuristic 老化（深さが進むたびに半減）
+            for (int i = 0; i < 64; i++) _historyTable[i] >>= 1;
+
             int iterBest = -1;
-            int score = NegaScout(board, depth, -Inf, Inf, ref iterBest);
+            int score;
+
+            // Aspiration Window: depth>=3 は前の深さのスコアを基準に探索窓を絞る
+            const int AspirationDelta = 50;
+            if (depth <= 2)
+            {
+                score = NegaScout(board, depth, -Inf, Inf, ref iterBest);
+            }
+            else
+            {
+                int lo = prevScore - AspirationDelta;
+                int hi = prevScore + AspirationDelta;
+                score = NegaScout(board, depth, lo, hi, ref iterBest);
+                if (score <= lo)        // fail-low: 下限を広げて再探索
+                {
+                    iterBest = -1;
+                    score = NegaScout(board, depth, -Inf, hi, ref iterBest);
+                }
+                else if (score >= hi)   // fail-high: 上限を広げて再探索
+                {
+                    iterBest = -1;
+                    score = NegaScout(board, depth, lo, Inf, ref iterBest);
+                }
+            }
+            prevScore = score;
+
             if (iterBest >= 0) bestMove = iterBest;
 
             // 反復深化の進捗表示（InfoLog: デバッグOFFでも表示）
             InfoLog($"深さ {depth,2} 完了: 最善手={BitBoard.BitToCoord(bestMove)}  スコア={score,10}  ノード={_recursionsCount}");
         }
 
-        // 最善手の評価内訳をデバッグ表示（DoMove後=相手視点のため符号反転して表示）
-        if (bestMove >= 0)
+        // 最善手の評価内訳をデバッグ表示（完全読みの場合は中間状態の評価は意味が薄いので省略）
+        if (bestMove >= 0 && !_perfSolveTriggered)
         {
             BitBoardEvaluate(board.DoMove(bestMove), out bestDetail);
             DebugLog($"評価内訳(最善手{BitBoard.BitToCoord(bestMove)}, AI視点): 位置={-bestDetail.Position * bestDetail.PosWeight}  機動力={-bestDetail.Mobility * bestDetail.MobWeight}  安定石={-bestDetail.Stability * bestDetail.StaWeight}  駒数差={-bestDetail.StoneDiff * bestDetail.DiffWeight}  合計={-bestDetail.Total}");
@@ -162,11 +204,35 @@ public class OthelloAI
 
         List<int> moves = BitBoard.GetMoveList(movesBit);
 
-        // Move Ordering: 置換表の最善手を先頭に
+        // Move Ordering 1: 置換表の最善手を先頭に
         if (ttBestMove >= 0 && moves.Contains(ttBestMove))
         {
             moves.Remove(ttBestMove);
             moves.Insert(0, ttBestMove);
+        }
+
+        // Move Ordering 2: Killer Move（TT手の次に配置）
+        int killerInsertPos = ttBestMove >= 0 ? 1 : 0;
+        int killer1 = depth < _killerMoves.GetLength(0) ? _killerMoves[depth, 0] : -1;
+        int killer2 = depth < _killerMoves.GetLength(0) ? _killerMoves[depth, 1] : -1;
+        if (killer1 >= 0 && killer1 != ttBestMove && moves.Contains(killer1))
+        {
+            moves.Remove(killer1);
+            moves.Insert(Math.Min(killerInsertPos, moves.Count), killer1);
+            killerInsertPos++;
+        }
+        if (killer2 >= 0 && killer2 != ttBestMove && killer2 != killer1 && moves.Contains(killer2))
+        {
+            moves.Remove(killer2);
+            moves.Insert(Math.Min(killerInsertPos, moves.Count), killer2);
+            killerInsertPos++;
+        }
+
+        // Move Ordering 3: 残り手を History スコア降順でソート
+        if (moves.Count - killerInsertPos > 1)
+        {
+            moves.Sort(killerInsertPos, moves.Count - killerInsertPos,
+                Comparer<int>.Create((a, b) => _historyTable[b].CompareTo(_historyTable[a])));
         }
 
         int localBestMove = moves[0];
@@ -210,6 +276,17 @@ public class OthelloAI
             if (alpha >= beta)
             {
                 _abCutCount++;
+                // Killer Move 更新（静寂手のみ：TT手でなければ登録）
+                if (move != ttBestMove && depth < _killerMoves.GetLength(0))
+                {
+                    if (move != _killerMoves[depth, 0])
+                    {
+                        _killerMoves[depth, 1] = _killerMoves[depth, 0];
+                        _killerMoves[depth, 0] = move;
+                    }
+                }
+                // History Heuristic 更新
+                _historyTable[move] += depth * depth;
                 _tt.Store(hash, depth, bestScore, alpha, beta, localBestMove);
                 return bestScore;
             }
@@ -259,6 +336,29 @@ public class OthelloAI
         {
             moves.Remove(ttBestMove);
             moves.Insert(0, ttBestMove);
+        }
+
+        // Move Ordering: コーナー優先 + 最小機動力原理（手数が少ない終盤のみ）
+        int sortStart = ttBestMove >= 0 ? 1 : 0;
+        const ulong CornerMask = 0x8100000000000081UL;
+        // コーナーを先頭付近に昇格
+        for (int ci = moves.Count - 1; ci >= sortStart; ci--)
+        {
+            if (((1UL << moves[ci]) & CornerMask) != 0)
+            {
+                int tmp = moves[sortStart]; moves[sortStart] = moves[ci]; moves[ci] = tmp;
+                sortStart++;
+            }
+        }
+        // 残り手を相手の応手数（昇順）でソート（重い処理なので残り12マス以下に限定）
+        if (board.EmptyCount <= 12 && moves.Count - sortStart > 1)
+        {
+            moves.Sort(sortStart, moves.Count - sortStart, Comparer<int>.Create((a, b) =>
+            {
+                int mobA = BitOperations.PopCount(board.DoMove(a).GetMoves());
+                int mobB = BitOperations.PopCount(board.DoMove(b).GetMoves());
+                return mobA.CompareTo(mobB);
+            }));
         }
 
         int bestScore = -Inf;
@@ -383,6 +483,22 @@ public class OthelloAI
             score -= PositionWeight[pos];
             o &= o - 1;
         }
+
+        // X-square動的補正: コーナーが埋まっていれば対応X-squareの重みを緩和（-250→+5）
+        // X-square: bit9(B2), bit14(G2), bit49(B7), bit54(G7)
+        // コーナー: bit0(A1), bit7(H1), bit56(A8), bit63(H8)
+        ulong all = board.Player | board.Opponent;
+        const int XSquareCorrection = 255; // -250 を +5 にする差分
+        ReadOnlySpan<(int xSq, int corner)> pairs = [(9, 0), (14, 7), (49, 56), (54, 63)];
+        foreach (var (xSq, corner) in pairs)
+        {
+            if (((all >> corner) & 1) == 1) // コーナーが埋まっている
+            {
+                if (((board.Player >> xSq) & 1) == 1)   score += XSquareCorrection;
+                if (((board.Opponent >> xSq) & 1) == 1) score -= XSquareCorrection;
+            }
+        }
+
         return score;
     }
 
@@ -421,6 +537,7 @@ public class OthelloAI
             changed = false;
             ulong newStable = stable;
 
+            // 行方向（水平）の安定石伝播
             for (int row = 0; row < 8; row++)
             {
                 ulong rowMask = 0xFFUL << (row * 8);
@@ -439,6 +556,28 @@ public class OthelloAI
                     for (int i = 0; i < 7; i++)
                         rightFill |= rowMine & (rightFill >> 1) & rowMask;
                     newStable |= leftFill & rightFill;
+                }
+            }
+
+            // 列方向（垂直）の安定石伝播
+            for (int col = 0; col < 8; col++)
+            {
+                ulong colMask = 0x0101010101010101UL << col;
+                ulong colAll = all & colMask;
+                ulong colMine = mine & colMask;
+                ulong colStable = stable & colMask;
+
+                if (colAll == colMask)
+                    newStable |= colMine;
+                else if (colStable != 0)
+                {
+                    ulong upFill = colStable;
+                    for (int i = 0; i < 7; i++)
+                        upFill |= colMine & ((upFill << 8) & colMask);
+                    ulong downFill = colStable;
+                    for (int i = 0; i < 7; i++)
+                        downFill |= colMine & ((downFill >> 8) & colMask);
+                    newStable |= upFill & downFill;
                 }
             }
 
