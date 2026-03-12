@@ -129,6 +129,7 @@ public static class HillClimbTrainer
                 WeightSet candidate = Perturb(current);
 
                 int winsCandidate = 0, winsCurrent = 0, draws = 0;
+                int totalMargin = 0; // 候補の駒数差マージン合計（正=有利、負=不利）
                 for (int g = 0; g < gamesPerEval; g++)
                 {
                     // 手番を交互に入れ替えて公平な評価（先手有利・後手有利を相殺）
@@ -140,12 +141,16 @@ public static class HillClimbTrainer
                     int candidateScore = candidateIsBlack ? b : w;
                     int currentScore   = candidateIsBlack ? w : b;
 
+                    totalMargin += candidateScore - currentScore;
+
                     if      (candidateScore > currentScore) winsCandidate++;
                     else if (candidateScore < currentScore) winsCurrent++;
                     else                                    draws++;
                 }
 
-                bool adopted = winsCandidate > winsCurrent;
+                // 採用基準: 平均駒数差マージンが正（勝敗だけでなく石差の大きさも考慮）
+                double avgMargin = (double)totalMargin / gamesPerEval;
+                bool adopted = avgMargin > 0;
                 if (adopted)
                 {
                     current = candidate;
@@ -153,7 +158,6 @@ public static class HillClimbTrainer
                     totalAdopted++;
                 }
 
-                double winRate = (double)winsCandidate / gamesPerEval * 100;
                 string mark    = adopted ? "✓ 採用" : "  棄却";
                 var    elapsed = DateTime.Now - startTime;
                 string elapsedStr = elapsed.ToString(@"hh\:mm\:ss");
@@ -172,7 +176,7 @@ public static class HillClimbTrainer
 
                 Console.WriteLine(
                     $"{bar} {iter * 100.0 / maxIter,5:F1}%  [{iter,5}/{maxIter}] {mark}  " +
-                    $"候補勝率={winRate,5:F1}%  (勝:{winsCandidate,2} 負:{winsCurrent,2} 引:{draws,2})  " +
+                    $"平均差={avgMargin:+0.0;-0.0}石  (勝:{winsCandidate,2} 負:{winsCurrent,2} 引:{draws,2})  " +
                     $"採用率={totalAdopted * 100.0 / iter:F1}%  経過:{elapsedStr}  残り:{etaStr}  変更:{diff}");
 
                 // 100イテレーションごとにサマリーを表示
