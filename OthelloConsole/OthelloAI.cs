@@ -64,10 +64,10 @@ public class OthelloAI
     private readonly TranspositionTable _tt = new();
 
     // 完全読みに切り替える残り空きマス数の閾値。
-    // 残り14マス以下で完全読みに移行する根拠:
+    // 残り18マス以下で完全読みに移行する根拠:
     // - αβ枝刈り + 置換表 + Move Orderingにより professional強度でも数秒以内に完了（実測値ベース）
-    // - これ以上増やすと思考時間が大幅に伸びる可能性がある
-    private const int PerfectSolveThreshold = 14;
+    // - 14→18 に拡張: 終盤精度が大幅に向上。思考時間が伸びる場合は14〜16に戻すこと
+    private const int PerfectSolveThreshold = 18;
 
     // 評価値の無限大（FinalScore の ±Inf±石数差 表現と区別するため -1 を使う）
     private const int Inf = 1_000_000_000;
