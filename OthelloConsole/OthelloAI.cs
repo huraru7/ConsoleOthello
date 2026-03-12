@@ -10,16 +10,18 @@ public struct EvalDetail
     public int Mobility;      // 機動力の生値
     public int Stability;     // 安定石の生値
     public int StoneDiff;     // 駒数差
-    public int Parity;        // パリティ (+1=有利, -1=不利)
-    public int PosWeight;     // 位置評価の重み
-    public int MobWeight;     // 機動力の重み
-    public int StaWeight;     // 安定石の重み
-    public int DiffWeight;    // 駒数差の重み
-    public int ParityWeight;  // パリティの重み
+    public int Parity;          // パリティ (+1=有利, -1=不利)
+    public int Frontier;        // フロンティアスコア（相手フロンティア多-自分フロンティア多 を正規化）
+    public int PosWeight;       // 位置評価の重み
+    public int MobWeight;       // 機動力の重み
+    public int StaWeight;       // 安定石の重み
+    public int DiffWeight;      // 駒数差の重み
+    public int ParityWeight;    // パリティの重み
+    public int FrontierWeight;  // フロンティアの重み
 
     public int Total => Position * PosWeight + Mobility * MobWeight
                       + Stability * StaWeight + StoneDiff * DiffWeight
-                      + Parity * ParityWeight;
+                      + Parity * ParityWeight + Frontier * FrontierWeight;
 
     public override string ToString()
         => $"位置={Position}×{PosWeight}={Position * PosWeight}  "
@@ -27,6 +29,7 @@ public struct EvalDetail
          + $"安定石={Stability}×{StaWeight}={Stability * StaWeight}  "
          + $"駒数差={StoneDiff}×{DiffWeight}={StoneDiff * DiffWeight}  "
          + $"パリティ={Parity}×{ParityWeight}={Parity * ParityWeight}  "
+         + $"フロンティア={Frontier}×{FrontierWeight}={Frontier * FrontierWeight}  "
          + $"合計={Total}";
 }
 
@@ -508,13 +511,14 @@ public class OthelloAI
             detail.Mobility  = MobilityScore(board);
             detail.Stability = StabilityScore(board);
             detail.StoneDiff = board.PlayerCount - board.OpponentCount;
-            // パリティ: 残り空きマスが奇数なら現プレイヤーが最後に打てる（有利）
-            detail.Parity       = board.EmptyCount % 2 == 1 ? 1 : -1;
-            detail.PosWeight    = _weights.Mid.PosWeight;
-            detail.MobWeight    = _weights.Mid.MobWeight;
-            detail.StaWeight    = _weights.Mid.StaWeight;
-            detail.DiffWeight   = _weights.Mid.DiffWeight;
-            detail.ParityWeight = _weights.Mid.ParityWeight;
+            detail.Parity    = board.EmptyCount % 2 == 1 ? 1 : -1;
+            detail.Frontier  = FrontierScore(board);
+            detail.PosWeight      = _weights.Mid.PosWeight;
+            detail.MobWeight      = _weights.Mid.MobWeight;
+            detail.StaWeight      = _weights.Mid.StaWeight;
+            detail.DiffWeight     = _weights.Mid.DiffWeight;
+            detail.ParityWeight   = _weights.Mid.ParityWeight;
+            detail.FrontierWeight = _weights.Mid.FrontierWeight;
         }
         else // 序盤: 位置と安定石を重視。序盤の駒数差は終盤で容易に逆転されるため無視
         {
@@ -522,13 +526,14 @@ public class OthelloAI
             detail.Mobility  = MobilityScore(board);
             detail.Stability = StabilityScore(board);
             detail.StoneDiff = board.PlayerCount - board.OpponentCount;
-            // 序盤はパリティの影響が小さいため ParityWeight=0 で実質無効化
-            detail.Parity       = board.EmptyCount % 2 == 1 ? 1 : -1;
-            detail.PosWeight    = _weights.Early.PosWeight;
-            detail.MobWeight    = _weights.Early.MobWeight;
-            detail.StaWeight    = _weights.Early.StaWeight;
-            detail.DiffWeight   = _weights.Early.DiffWeight;
-            detail.ParityWeight = _weights.Early.ParityWeight;
+            detail.Parity    = board.EmptyCount % 2 == 1 ? 1 : -1;
+            detail.Frontier  = FrontierScore(board);
+            detail.PosWeight      = _weights.Early.PosWeight;
+            detail.MobWeight      = _weights.Early.MobWeight;
+            detail.StaWeight      = _weights.Early.StaWeight;
+            detail.DiffWeight     = _weights.Early.DiffWeight;
+            detail.ParityWeight   = _weights.Early.ParityWeight;
+            detail.FrontierWeight = _weights.Early.FrontierWeight;
         }
 
         return detail.Total;
@@ -579,6 +584,34 @@ public class OthelloAI
         int oppMoves = BitOperations.PopCount(swapped.GetMoves());
         int total = myMoves + oppMoves;
         return total == 0 ? 0 : 100 * (myMoves - oppMoves) / total;
+    }
+
+    /// <summary>
+    /// フロンティア評価: 空きマスに隣接する石（ひっくり返されやすい不安定石）を評価。
+    /// 自分のフロンティアが少ない＝有利。スコアは [-100, +100] の正規化値。
+    /// </summary>
+    private static int FrontierScore(BitBoard board)
+    {
+        ulong empty = ~(board.Player | board.Opponent);
+
+        // 空きマスを全8方向に1マス拡張し、石に隣接するマスを求める
+        const ulong NotAFile = 0xFEFEFEFEFEFEFEFEUL; // 左端列ラップ防止
+        const ulong NotHFile = 0x7F7F7F7F7F7F7F7FUL; // 右端列ラップ防止
+        ulong adj = 0UL;
+        adj |= empty << 8;               // 下
+        adj |= empty >> 8;               // 上
+        adj |= (empty & NotHFile) << 1;  // 右
+        adj |= (empty & NotAFile) >> 1;  // 左
+        adj |= (empty & NotHFile) << 9;  // 右下
+        adj |= (empty & NotAFile) << 7;  // 左下
+        adj |= (empty & NotHFile) >> 7;  // 右上
+        adj |= (empty & NotAFile) >> 9;  // 左上
+
+        int myFrontier  = BitOperations.PopCount(adj & board.Player);
+        int oppFrontier = BitOperations.PopCount(adj & board.Opponent);
+        int total = myFrontier + oppFrontier;
+        // 自分のフロンティアが少ないほど正の値（有利）
+        return total == 0 ? 0 : 100 * (oppFrontier - myFrontier) / total;
     }
 
     /// <summary>

@@ -13,7 +13,8 @@ public class PhaseWeights
     public int MobWeight    { get; set; }  // 機動力の重み
     public int StaWeight    { get; set; }  // 安定石の重み
     public int DiffWeight   { get; set; }  // 駒数差の重み
-    public int ParityWeight { get; set; }  // パリティの重み（奇数空きマス＝現プレイヤー有利）
+    public int ParityWeight   { get; set; }  // パリティの重み（奇数空きマス＝現プレイヤー有利）
+    public int FrontierWeight { get; set; }  // フロンティアの重み（空きマスに隣接する不安定石を減らす）
 }
 
 /// <summary>
@@ -29,8 +30,8 @@ public class WeightSet
     /// <summary>現在のハードコード値と同じデフォルト重みを返す</summary>
     public static WeightSet Default() => new WeightSet
     {
-        Early = new PhaseWeights { PosWeight = 30, MobWeight = 15, StaWeight = 20, DiffWeight = 0, ParityWeight = 0 },
-        Mid   = new PhaseWeights { PosWeight = 25, MobWeight = 10, StaWeight = 15, DiffWeight = 5, ParityWeight = 5 },
+        Early = new PhaseWeights { PosWeight = 30, MobWeight = 15, StaWeight = 20, DiffWeight = 0, ParityWeight = 0, FrontierWeight = 3 },
+        Mid   = new PhaseWeights { PosWeight = 25, MobWeight = 10, StaWeight = 15, DiffWeight = 5, ParityWeight = 5, FrontierWeight = 5 },
         PositionTable = new int[]
         {
              500, -150,  30,  10,  10,  30, -150,  500,
@@ -74,15 +75,17 @@ public class WeightSet
             MobWeight    = Early.MobWeight,
             StaWeight    = Early.StaWeight,
             DiffWeight   = Early.DiffWeight,
-            ParityWeight = Early.ParityWeight,
+            ParityWeight   = Early.ParityWeight,
+            FrontierWeight = Early.FrontierWeight,
         },
         Mid = new PhaseWeights
         {
-            PosWeight    = Mid.PosWeight,
-            MobWeight    = Mid.MobWeight,
-            StaWeight    = Mid.StaWeight,
-            DiffWeight   = Mid.DiffWeight,
-            ParityWeight = Mid.ParityWeight,
+            PosWeight      = Mid.PosWeight,
+            MobWeight      = Mid.MobWeight,
+            StaWeight      = Mid.StaWeight,
+            DiffWeight     = Mid.DiffWeight,
+            ParityWeight   = Mid.ParityWeight,
+            FrontierWeight = Mid.FrontierWeight,
         },
         PositionTable = (int[])PositionTable.Clone()
     };

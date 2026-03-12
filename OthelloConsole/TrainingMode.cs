@@ -215,13 +215,14 @@ public static class HillClimbTrainer
     {
         int delta = _rng.Next(2, 8) * (_rng.NextDouble() < 0.5 ? 1 : -1);
         PhaseWeights phase = _rng.NextDouble() < 0.5 ? ws.Early : ws.Mid;
-        switch (_rng.Next(5))
+        switch (_rng.Next(6))
         {
-            case 0: phase.PosWeight    = Math.Max(0, phase.PosWeight    + delta); break;
-            case 1: phase.MobWeight    = Math.Max(0, phase.MobWeight    + delta); break;
-            case 2: phase.StaWeight    = Math.Max(0, phase.StaWeight    + delta); break;
-            case 3: phase.DiffWeight   = Math.Max(0, phase.DiffWeight   + delta); break;
-            case 4: phase.ParityWeight = Math.Max(0, phase.ParityWeight + delta); break;
+            case 0: phase.PosWeight      = Math.Max(0, phase.PosWeight      + delta); break;
+            case 1: phase.MobWeight      = Math.Max(0, phase.MobWeight      + delta); break;
+            case 2: phase.StaWeight      = Math.Max(0, phase.StaWeight      + delta); break;
+            case 3: phase.DiffWeight     = Math.Max(0, phase.DiffWeight     + delta); break;
+            case 4: phase.ParityWeight   = Math.Max(0, phase.ParityWeight   + delta); break;
+            case 5: phase.FrontierWeight = Math.Max(0, phase.FrontierWeight + delta); break;
         }
     }
 
@@ -264,12 +265,14 @@ public static class HillClimbTrainer
             ("序盤 機動力",   before.Early.MobWeight,    after.Early.MobWeight),
             ("序盤 安定石",   before.Early.StaWeight,    after.Early.StaWeight),
             ("序盤 駒数差",   before.Early.DiffWeight,   after.Early.DiffWeight),
-            ("序盤 パリティ", before.Early.ParityWeight, after.Early.ParityWeight),
-            ("中盤 位置",     before.Mid.PosWeight,      after.Mid.PosWeight),
-            ("中盤 機動力",   before.Mid.MobWeight,      after.Mid.MobWeight),
-            ("中盤 安定石",   before.Mid.StaWeight,      after.Mid.StaWeight),
-            ("中盤 駒数差",   before.Mid.DiffWeight,     after.Mid.DiffWeight),
-            ("中盤 パリティ", before.Mid.ParityWeight,   after.Mid.ParityWeight),
+            ("序盤 パリティ",     before.Early.ParityWeight,   after.Early.ParityWeight),
+            ("序盤 フロンティア", before.Early.FrontierWeight, after.Early.FrontierWeight),
+            ("中盤 位置",         before.Mid.PosWeight,        after.Mid.PosWeight),
+            ("中盤 機動力",       before.Mid.MobWeight,        after.Mid.MobWeight),
+            ("中盤 安定石",       before.Mid.StaWeight,        after.Mid.StaWeight),
+            ("中盤 駒数差",       before.Mid.DiffWeight,       after.Mid.DiffWeight),
+            ("中盤 パリティ",     before.Mid.ParityWeight,     after.Mid.ParityWeight),
+            ("中盤 フロンティア", before.Mid.FrontierWeight,   after.Mid.FrontierWeight),
         };
         foreach (var (label, bVal, aVal) in phaseChecks)
         {
@@ -295,9 +298,11 @@ public static class HillClimbTrainer
     {
         Console.WriteLine("\n--- 学習後の重み ---");
         Console.WriteLine($"序盤: 位置={ws.Early.PosWeight,3}  機動力={ws.Early.MobWeight,3}  " +
-                          $"安定石={ws.Early.StaWeight,3}  駒数差={ws.Early.DiffWeight,3}  パリティ={ws.Early.ParityWeight,3}");
+                          $"安定石={ws.Early.StaWeight,3}  駒数差={ws.Early.DiffWeight,3}  " +
+                          $"パリティ={ws.Early.ParityWeight,3}  フロンティア={ws.Early.FrontierWeight,3}");
         Console.WriteLine($"中盤: 位置={ws.Mid.PosWeight,3}  機動力={ws.Mid.MobWeight,3}  " +
-                          $"安定石={ws.Mid.StaWeight,3}  駒数差={ws.Mid.DiffWeight,3}  パリティ={ws.Mid.ParityWeight,3}");
+                          $"安定石={ws.Mid.StaWeight,3}  駒数差={ws.Mid.DiffWeight,3}  " +
+                          $"パリティ={ws.Mid.ParityWeight,3}  フロンティア={ws.Mid.FrontierWeight,3}");
         Console.WriteLine("位置評価テーブル:");
         for (int r = 0; r < 8; r++)
         {
