@@ -6,23 +6,27 @@ using static OthelloDebugLog;
 /// </summary>
 public struct EvalDetail
 {
-    public int Position;   // 位置評価の生値
-    public int Mobility;   // 機動力の生値
-    public int Stability;  // 安定石の生値
-    public int StoneDiff;  // 駒数差
-    public int PosWeight;  // 位置評価の重み
-    public int MobWeight;  // 機動力の重み
-    public int StaWeight;  // 安定石の重み
-    public int DiffWeight; // 駒数差の重み
+    public int Position;      // 位置評価の生値
+    public int Mobility;      // 機動力の生値
+    public int Stability;     // 安定石の生値
+    public int StoneDiff;     // 駒数差
+    public int Parity;        // パリティ (+1=有利, -1=不利)
+    public int PosWeight;     // 位置評価の重み
+    public int MobWeight;     // 機動力の重み
+    public int StaWeight;     // 安定石の重み
+    public int DiffWeight;    // 駒数差の重み
+    public int ParityWeight;  // パリティの重み
 
     public int Total => Position * PosWeight + Mobility * MobWeight
-                      + Stability * StaWeight + StoneDiff * DiffWeight;
+                      + Stability * StaWeight + StoneDiff * DiffWeight
+                      + Parity * ParityWeight;
 
     public override string ToString()
         => $"位置={Position}×{PosWeight}={Position * PosWeight}  "
          + $"機動力={Mobility}×{MobWeight}={Mobility * MobWeight}  "
          + $"安定石={Stability}×{StaWeight}={Stability * StaWeight}  "
          + $"駒数差={StoneDiff}×{DiffWeight}={StoneDiff * DiffWeight}  "
+         + $"パリティ={Parity}×{ParityWeight}={Parity * ParityWeight}  "
          + $"合計={Total}";
 }
 
@@ -504,10 +508,13 @@ public class OthelloAI
             detail.Mobility  = MobilityScore(board);
             detail.Stability = StabilityScore(board);
             detail.StoneDiff = board.PlayerCount - board.OpponentCount;
-            detail.PosWeight  = _weights.Mid.PosWeight;  // 位置取り（角・辺を重視）
-            detail.MobWeight  = _weights.Mid.MobWeight;  // 機動力（選択肢の広さ）
-            detail.StaWeight  = _weights.Mid.StaWeight;  // 安定石（コーナーから確定した石）
-            detail.DiffWeight = _weights.Mid.DiffWeight; // 中盤以降は駒数も少し考慮
+            // パリティ: 残り空きマスが奇数なら現プレイヤーが最後に打てる（有利）
+            detail.Parity       = board.EmptyCount % 2 == 1 ? 1 : -1;
+            detail.PosWeight    = _weights.Mid.PosWeight;
+            detail.MobWeight    = _weights.Mid.MobWeight;
+            detail.StaWeight    = _weights.Mid.StaWeight;
+            detail.DiffWeight   = _weights.Mid.DiffWeight;
+            detail.ParityWeight = _weights.Mid.ParityWeight;
         }
         else // 序盤: 位置と安定石を重視。序盤の駒数差は終盤で容易に逆転されるため無視
         {
@@ -515,10 +522,13 @@ public class OthelloAI
             detail.Mobility  = MobilityScore(board);
             detail.Stability = StabilityScore(board);
             detail.StoneDiff = board.PlayerCount - board.OpponentCount;
-            detail.PosWeight  = _weights.Early.PosWeight;  // 角・辺の位置取りを最重視
-            detail.MobWeight  = _weights.Early.MobWeight;  // 機動力を高く評価
-            detail.StaWeight  = _weights.Early.StaWeight;  // 安定石（早期の角確保）
-            detail.DiffWeight = _weights.Early.DiffWeight; // 序盤の駒数差は無視
+            // 序盤はパリティの影響が小さいため ParityWeight=0 で実質無効化
+            detail.Parity       = board.EmptyCount % 2 == 1 ? 1 : -1;
+            detail.PosWeight    = _weights.Early.PosWeight;
+            detail.MobWeight    = _weights.Early.MobWeight;
+            detail.StaWeight    = _weights.Early.StaWeight;
+            detail.DiffWeight   = _weights.Early.DiffWeight;
+            detail.ParityWeight = _weights.Early.ParityWeight;
         }
 
         return detail.Total;

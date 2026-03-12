@@ -42,7 +42,11 @@ public class Othello
 
     private StringBuilder builder = new();
     private MainGameData _gameData = new MainGameData();
-    public OthelloAI _ai = new OthelloAI();
+    public OthelloAI _ai = new OthelloAI(
+        File.Exists("weights/best_weights.json")
+            ? WeightSet.Load("weights/best_weights.json")
+            : WeightSet.Default()
+    );
     private int _player1FrameCounter = 2;
     private int _player2FrameCounter = 2;
     private bool _isDebug = false;
@@ -167,7 +171,7 @@ public class Othello
         {
             "1" => AIStrength.Beginner,
             "3" => AIStrength.expert,
-            _   => AIStrength.normal
+            _ => AIStrength.normal
         };
 
         Console.Clear();
