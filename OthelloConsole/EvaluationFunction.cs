@@ -1,6 +1,11 @@
 using static LibraryGameData;
 using static OthelloSystem;
 
+/// <summary>
+/// 旧評価関数。OthelloAI.cs の BitBoardEvaluate() に全機能が移行済みのため廃止予定。
+/// 比較・参照用途でのみ保持する。
+/// </summary>
+[Obsolete("OthelloAI の BitBoardEvaluate() を使用してください。")]
 public static class EvaluationFunction
 {
     /// <summary>

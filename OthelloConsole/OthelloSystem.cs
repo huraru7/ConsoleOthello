@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Net.Mail;
 
 public static class OthelloSystem
 {
@@ -128,7 +127,7 @@ public static class OthelloSystem
             _gameData._gameTurn = GameTurn.AI;
 
         else
-            _gameData._gameTurn = _gameData._gameTurn == GameTurn.prayer ? GameTurn.AI : GameTurn.prayer;
+            _gameData._gameTurn = _gameData._gameTurn == GameTurn.Player ? GameTurn.AI : GameTurn.Player;
 
         _gameData._turnNum = _gameData._turnNum == 1 ? 2 : 1;
 

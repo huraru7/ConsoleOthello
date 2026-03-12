@@ -57,8 +57,8 @@ public readonly struct BitBoard
             for (int x = 0; x < 8; x++)
             {
                 int bit = y * 8 + x;
-                if (((Player >> bit) & 1) == 1) tiles[x, y] = me;
-                else if (((Opponent >> bit) & 1) == 1) tiles[x, y] = opp;
+                if (((Player >> bit) & 1) == 1) tiles[y, x] = me;       // tiles[行, 列] の順
+                else if (((Opponent >> bit) & 1) == 1) tiles[y, x] = opp;
                 else tiles[x, y] = 0;
             }
         }
@@ -72,22 +72,16 @@ public readonly struct BitBoard
         ulong empty = ~(Player | Opponent);
         ulong moves = 0UL;
 
-        // 上
-        moves |= GetMovesInDirection(Player, Opponent, 8, FullBoard);
-        // 下
-        moves |= GetMovesInDirection(Player, Opponent, unchecked((int)-8), FullBoard);
-        // 左（x方向-1: HFileをマスク）
-        moves |= GetMovesInDirection(Player, Opponent, 1, NotHFile);
-        // 右（x方向+1: AFileをマスク）
-        moves |= GetMovesInDirection(Player, Opponent, unchecked((int)-1), NotAFile);
-        // 左上
-        moves |= GetMovesInDirection(Player, Opponent, 9, NotHFile);
-        // 右上
-        moves |= GetMovesInDirection(Player, Opponent, 7, NotAFile);
-        // 左下
-        moves |= GetMovesInDirection(Player, Opponent, unchecked((int)-7), NotHFile);
-        // 右下
-        moves |= GetMovesInDirection(Player, Opponent, unchecked((int)-9), NotAFile);
+        // bit = row*8 + col なので、行+1 は shift+8、列+1 は shift+1
+        // NotHFile(x!=7): 右端での左折り返しを防ぐ。NotAFile(x!=0): 左端での右折り返しを防ぐ。
+        moves |= GetMovesInDirection(Player, Opponent,  8, FullBoard); // 下（row+1）
+        moves |= GetMovesInDirection(Player, Opponent, -8, FullBoard); // 上（row-1）
+        moves |= GetMovesInDirection(Player, Opponent,  1, NotHFile);  // 右（col+1）
+        moves |= GetMovesInDirection(Player, Opponent, -1, NotAFile);  // 左（col-1）
+        moves |= GetMovesInDirection(Player, Opponent,  9, NotHFile);  // 右下（row+1, col+1）
+        moves |= GetMovesInDirection(Player, Opponent,  7, NotAFile);  // 左下（row+1, col-1）
+        moves |= GetMovesInDirection(Player, Opponent, -7, NotHFile);  // 右上（row-1, col+1）
+        moves |= GetMovesInDirection(Player, Opponent, -9, NotAFile);  // 左上（row-1, col-1）
 
         return moves & empty;
     }
@@ -189,7 +183,7 @@ public readonly struct BitBoard
     public int OpponentCount => BitOperations.PopCount(Opponent);
 
     /// <summary>
-    /// 合法手ビットマスクをリストに展開する
+    /// 合法手ビットマスクをリストに展開する（UI側などList<int>が必要な箇所向け）
     /// </summary>
     public static List<int> GetMoveList(ulong moves)
     {
@@ -204,12 +198,29 @@ public readonly struct BitBoard
     }
 
     /// <summary>
-    /// ビット位置を(x,y)座標（1ベース）に変換
+    /// 合法手ビットマスクをスタック割り当てバッファに展開する（GCフリー・AI探索向け）。
+    /// バッファには最大64要素分の容量が必要。
     /// </summary>
-    public static (int x, int y) BitToCoord(int pos) => (pos / 8 + 1, pos % 8 + 1); // (行+1, 列+1) の順で返す
+    /// <returns>実際の合法手数</returns>
+    public static int GetMoveArray(ulong moves, Span<int> buffer)
+    {
+        int count = 0;
+        while (moves != 0)
+        {
+            buffer[count++] = BitOperations.TrailingZeroCount(moves);
+            moves &= moves - 1; // 最下位ビットを消去
+        }
+        return count;
+    }
 
     /// <summary>
-    /// (x,y)座標（1ベース）をビット位置に変換
+    /// ビット位置(0-63)を1ベース座標(行, 列)に変換する。
+    /// bit = row*8 + col なので row = pos/8, col = pos%8。
     /// </summary>
-    public static int CoordToBit(int x, int y) => (y - 1) * 8 + (x - 1);
+    public static (int row, int col) BitToCoord(int pos) => (pos / 8 + 1, pos % 8 + 1);
+
+    /// <summary>
+    /// 1ベース座標(行, 列)をビット位置に変換する。
+    /// </summary>
+    public static int CoordToBit(int row, int col) => (row - 1) * 8 + (col - 1);
 }

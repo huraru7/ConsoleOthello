@@ -34,9 +34,9 @@ public class Othello
         _gameData._tiles[mid, mid - 1] = 1;
         _gameData._tiles[mid, mid] = 2;
 
-        _gameData._gameTurn = GameTurn.prayer;
-        _gameData._turnConter = 1; //ターン数
-        _gameData._turnNum = 1; // 1:prayer1  2:prayer2 or AI
+        _gameData._gameTurn = GameTurn.Player;
+        _gameData._turnCounter = 1; //ターン数
+        _gameData._turnNum = 1; // 1:Player1  2:Player2 or AI
         _gameData._tilesSize = size;
     }
 
@@ -66,7 +66,7 @@ public class Othello
             Console.WriteLine("[INFO] デバッグモードを有効化しました (--debug)");
         }
         Console.WriteLine("オセロへようこそ！");
-        Console.WriteLine("モード選択:AI対戦(1) 2人対戦(2) AI対AI(3)");
+        Console.WriteLine("モード選択:AI対戦(1) 2人対戦(2) AI対AI(3) 学習モード(4)");
         string input = Console.ReadLine() ?? "";
 
         switch (input)
@@ -85,6 +85,10 @@ public class Othello
                 _game._gameData._gameTurn = GameTurn.AI;
                 _game._gameData._turnNum = 2;
                 break;
+            case "4":
+                Console.WriteLine("学習モードを選択しました。");
+                RunTrainingMode();
+                return;
             default:
                 Console.WriteLine("無効な入力です。2人対戦モードに進みます。");
                 _game._gameData._gameMode = GameMode.PlayervsPlayer;
@@ -116,7 +120,7 @@ public class Othello
             switch (aiInput)
             {
                 case "1":
-                    _game._gameData._AIStrength = AIStrength.nuub;
+                    _game._gameData._AIStrength = AIStrength.Beginner;
                     break;
                 case "2":
                     _game._gameData._AIStrength = AIStrength.normal;
@@ -148,6 +152,29 @@ public class Othello
     }
 
     /// <summary>
+    /// 学習モードのセットアップと実行
+    /// </summary>
+    static void RunTrainingMode()
+    {
+        Console.WriteLine("学習イテレーション数を入力してください（デフォルト: 500）:");
+        int maxIter = int.TryParse(Console.ReadLine(), out int mi) && mi > 0 ? mi : 500;
+
+        Console.WriteLine("1評価あたりのゲーム数を入力してください（デフォルト: 20）:");
+        int gamesPerEval = int.TryParse(Console.ReadLine(), out int gpe) && gpe > 0 ? gpe : 20;
+
+        Console.WriteLine("AI強度を選択してください: 初心者(1) 普通(2) 上級者(3)  [デフォルト: 普通]");
+        AIStrength trainStrength = Console.ReadLine() switch
+        {
+            "1" => AIStrength.Beginner,
+            "3" => AIStrength.expert,
+            _   => AIStrength.normal
+        };
+
+        Console.Clear();
+        HillClimbTrainer.Run(maxIter, gamesPerEval, trainStrength);
+    }
+
+    /// <summary>
     /// ゲームを実行する中枢
     /// </summary>
     async Task RunGame()
@@ -168,7 +195,7 @@ public class Othello
                 Console.WriteLine("=======================================================");
                 _consecutivePassCount++;
                 _gameData = TurnChange(_gameData);
-                _gameData._turnConter++;
+                _gameData._turnCounter++;
                 continue;
             }
             else
@@ -234,7 +261,7 @@ public class Othello
 
             _gameData = TurnChange(_gameData);
 
-            _gameData._turnConter++;
+            _gameData._turnCounter++;
         }
     }
 
@@ -321,7 +348,7 @@ public class Othello
         }
 
         builder.Clear();
-        builder.Append($"ターン数: {_gameData._turnConter}  ");
+        builder.Append($"ターン数: {_gameData._turnCounter}  ");
 
         if (_gameData._turnNum == 1)
         {

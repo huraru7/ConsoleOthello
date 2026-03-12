@@ -31,6 +31,19 @@ public struct EvalDetail
 /// </summary>
 public class OthelloAI
 {
+    private readonly WeightSet _weights;
+    private readonly int[] _positionTable;
+
+    /// <summary>デフォルト重みで生成（既存コードとの後方互換）</summary>
+    public OthelloAI() : this(WeightSet.Default()) { }
+
+    /// <summary>WeightSetを注入して生成（学習モード用）</summary>
+    public OthelloAI(WeightSet weights)
+    {
+        _weights = weights;
+        _positionTable = weights.PositionTable;
+    }
+
     private int _maxDepth;
     private int _recursionsCount;
     private int _abCutCount;      // αβカット発生回数
@@ -46,10 +59,13 @@ public class OthelloAI
 
     private readonly TranspositionTable _tt = new();
 
-    // 完全読みに切り替える残り空きマス数の閾値
+    // 完全読みに切り替える残り空きマス数の閾値。
+    // 残り14マス以下で完全読みに移行する根拠:
+    // - αβ枝刈り + 置換表 + Move Orderingにより professional強度でも数秒以内に完了（実測値ベース）
+    // - これ以上増やすと思考時間が大幅に伸びる可能性がある
     private const int PerfectSolveThreshold = 14;
 
-    // 評価値の無限大
+    // 評価値の無限大（FinalScore の ±Inf±石数差 表現と区別するため -1 を使う）
     private const int Inf = 1_000_000_000;
 
     public (int x, int y) AI(List<(int x, int y)> _validMoves, MainGameData _gamedata, bool _isDebug)
@@ -60,11 +76,11 @@ public class OthelloAI
         _pvsResearchCount = 0;
         _perfSolveTriggered = false;
         _lastProgressLogNodes = 0;
-        StartAILog(_gamedata._turnConter);
+        StartAILog(_gamedata._turnCounter);
 
         _maxDepth = _gamedata._AIStrength switch
         {
-            AIStrength.nuub => 3,
+            AIStrength.Beginner => 3,
             AIStrength.normal => 6,
             AIStrength.expert => 10,
             AIStrength.professional => 16,
@@ -113,6 +129,8 @@ public class OthelloAI
             int score;
 
             // Aspiration Window: depth>=3 は前の深さのスコアを基準に探索窓を絞る
+            // Delta=50 の根拠: 評価値の通常変動幅（50〜200程度）に対して適度な窓幅。
+            // 小さすぎると再探索が頻発し、大きすぎると窓の効果が薄れる。
             const int AspirationDelta = 50;
             if (depth <= 2)
             {
@@ -202,43 +220,72 @@ public class OthelloAI
             return passScore;
         }
 
-        List<int> moves = BitBoard.GetMoveList(movesBit);
+        // stackalloc でGCフリーな合法手バッファを確保
+        Span<int> movesBuffer = stackalloc int[64];
+        int moveCount = BitBoard.GetMoveArray(movesBit, movesBuffer);
+        Span<int> moves = movesBuffer[..moveCount];
 
-        // Move Ordering 1: 置換表の最善手を先頭に
-        if (ttBestMove >= 0 && moves.Contains(ttBestMove))
+        // Move Ordering 1: 置換表の最善手を先頭にスワップ
+        int insertPos = 0;
+        if (ttBestMove >= 0)
         {
-            moves.Remove(ttBestMove);
-            moves.Insert(0, ttBestMove);
+            for (int k = 0; k < moveCount; k++)
+            {
+                if (moves[k] == ttBestMove)
+                {
+                    moves[k] = moves[0]; moves[0] = ttBestMove;
+                    insertPos = 1;
+                    break;
+                }
+            }
         }
 
-        // Move Ordering 2: Killer Move（TT手の次に配置）
-        int killerInsertPos = ttBestMove >= 0 ? 1 : 0;
+        // Move Ordering 2: Killer Move（TT手の直後に配置）
         int killer1 = depth < _killerMoves.GetLength(0) ? _killerMoves[depth, 0] : -1;
         int killer2 = depth < _killerMoves.GetLength(0) ? _killerMoves[depth, 1] : -1;
-        if (killer1 >= 0 && killer1 != ttBestMove && moves.Contains(killer1))
+        if (killer1 >= 0 && killer1 != ttBestMove)
         {
-            moves.Remove(killer1);
-            moves.Insert(Math.Min(killerInsertPos, moves.Count), killer1);
-            killerInsertPos++;
+            for (int k = insertPos; k < moveCount; k++)
+            {
+                if (moves[k] == killer1)
+                {
+                    if (k != insertPos) { moves[k] = moves[insertPos]; moves[insertPos] = killer1; }
+                    insertPos++;
+                    break;
+                }
+            }
         }
-        if (killer2 >= 0 && killer2 != ttBestMove && killer2 != killer1 && moves.Contains(killer2))
+        if (killer2 >= 0 && killer2 != ttBestMove && killer2 != killer1)
         {
-            moves.Remove(killer2);
-            moves.Insert(Math.Min(killerInsertPos, moves.Count), killer2);
-            killerInsertPos++;
+            for (int k = insertPos; k < moveCount; k++)
+            {
+                if (moves[k] == killer2)
+                {
+                    if (k != insertPos) { moves[k] = moves[insertPos]; moves[insertPos] = killer2; }
+                    insertPos++;
+                    break;
+                }
+            }
         }
 
-        // Move Ordering 3: 残り手を History スコア降順でソート
-        if (moves.Count - killerInsertPos > 1)
+        // Move Ordering 3: 残り手を History スコア降順で挿入ソート（手数が少ないためO(n²)で十分）
+        for (int k = insertPos + 1; k < moveCount; k++)
         {
-            moves.Sort(killerInsertPos, moves.Count - killerInsertPos,
-                Comparer<int>.Create((a, b) => _historyTable[b].CompareTo(_historyTable[a])));
+            int key = moves[k];
+            int keyScore = _historyTable[key];
+            int j = k - 1;
+            while (j >= insertPos && _historyTable[moves[j]] < keyScore)
+            {
+                moves[j + 1] = moves[j];
+                j--;
+            }
+            moves[j + 1] = key;
         }
 
         int localBestMove = moves[0];
         int bestScore = -Inf;
 
-        for (int i = 0; i < moves.Count; i++)
+        for (int i = 0; i < moveCount; i++)
         {
             int move = moves[i];
             BitBoard next = board.DoMove(move);
@@ -329,20 +376,29 @@ public class OthelloAI
             return passScore;
         }
 
-        List<int> moves = BitBoard.GetMoveList(movesBit);
+        // stackalloc でGCフリーな合法手バッファを確保
+        Span<int> movesBuffer = stackalloc int[64];
+        int moveCount = BitBoard.GetMoveArray(movesBit, movesBuffer);
+        Span<int> moves = movesBuffer[..moveCount];
 
-        // Move Ordering: 置換表の最善手を先頭に
-        if (ttBestMove >= 0 && moves.Contains(ttBestMove))
+        // Move Ordering: 置換表の最善手を先頭にスワップ
+        int sortStart = 0;
+        if (ttBestMove >= 0)
         {
-            moves.Remove(ttBestMove);
-            moves.Insert(0, ttBestMove);
+            for (int k = 0; k < moveCount; k++)
+            {
+                if (moves[k] == ttBestMove)
+                {
+                    moves[k] = moves[0]; moves[0] = ttBestMove;
+                    sortStart = 1;
+                    break;
+                }
+            }
         }
 
-        // Move Ordering: コーナー優先 + 最小機動力原理（手数が少ない終盤のみ）
-        int sortStart = ttBestMove >= 0 ? 1 : 0;
+        // Move Ordering: コーナー優先（終盤は角を確実に取る）
         const ulong CornerMask = 0x8100000000000081UL;
-        // コーナーを先頭付近に昇格
-        for (int ci = moves.Count - 1; ci >= sortStart; ci--)
+        for (int ci = moveCount - 1; ci >= sortStart; ci--)
         {
             if (((1UL << moves[ci]) & CornerMask) != 0)
             {
@@ -350,21 +406,35 @@ public class OthelloAI
                 sortStart++;
             }
         }
-        // 残り手を相手の応手数（昇順）でソート（重い処理なので残り12マス以下に限定）
-        if (board.EmptyCount <= 12 && moves.Count - sortStart > 1)
+
+        // Move Ordering: 残り12マス以下のみ最小機動力原理（相手の応手数昇順）で挿入ソート
+        if (board.EmptyCount <= 12 && moveCount - sortStart > 1)
         {
-            moves.Sort(sortStart, moves.Count - sortStart, Comparer<int>.Create((a, b) =>
+            // 機動力を事前計算（挿入ソート内での重複呼び出しを避ける）
+            Span<int> mobBuffer = stackalloc int[64];
+            for (int k = sortStart; k < moveCount; k++)
+                mobBuffer[k] = BitOperations.PopCount(board.DoMove(moves[k]).GetMoves());
+
+            for (int k = sortStart + 1; k < moveCount; k++)
             {
-                int mobA = BitOperations.PopCount(board.DoMove(a).GetMoves());
-                int mobB = BitOperations.PopCount(board.DoMove(b).GetMoves());
-                return mobA.CompareTo(mobB);
-            }));
+                int keyMove = moves[k];
+                int keyMob  = mobBuffer[k];
+                int j = k - 1;
+                while (j >= sortStart && mobBuffer[j] > keyMob)
+                {
+                    moves[j + 1]    = moves[j];
+                    mobBuffer[j + 1] = mobBuffer[j];
+                    j--;
+                }
+                moves[j + 1]    = keyMove;
+                mobBuffer[j + 1] = keyMob;
+            }
         }
 
         int bestScore = -Inf;
         int localBestMove = moves[0];
 
-        for (int i = 0; i < moves.Count; i++)
+        for (int i = 0; i < moveCount; i++)
         {
             BitBoard next = board.DoMove(moves[i]);
             _recursionsCount++;
@@ -417,56 +487,46 @@ public class OthelloAI
     /// <summary>
     /// ビットボード用評価関数（現プレイヤー視点）。内訳を detail に返す。
     /// </summary>
-    private static int BitBoardEvaluate(BitBoard board, out EvalDetail detail)
+    private int BitBoardEvaluate(BitBoard board, out EvalDetail detail)
     {
         int total = board.PlayerCount + board.OpponentCount;
         detail = default;
 
-        if (total >= 54) // 終盤: 駒数差のみ
+        if (total >= 54) // 終盤: 駒数差だけで勝敗を正確に判定する
         {
             detail.StoneDiff = board.PlayerCount - board.OpponentCount;
             detail.DiffWeight = 1;
             return detail.Total;
         }
-        else if (total >= 20) // 中盤
+        else if (total >= 20) // 中盤: バランス型。安定石・位置・機動力・駒数差を総合評価
         {
-            detail.Position = PositionScore(board);
-            detail.Mobility = MobilityScore(board);
+            detail.Position  = PositionScore(board);
+            detail.Mobility  = MobilityScore(board);
             detail.Stability = StabilityScore(board);
             detail.StoneDiff = board.PlayerCount - board.OpponentCount;
-            detail.PosWeight = 25;
-            detail.MobWeight = 10;
-            detail.StaWeight = 15;
-            detail.DiffWeight = 5;
+            detail.PosWeight  = _weights.Mid.PosWeight;  // 位置取り（角・辺を重視）
+            detail.MobWeight  = _weights.Mid.MobWeight;  // 機動力（選択肢の広さ）
+            detail.StaWeight  = _weights.Mid.StaWeight;  // 安定石（コーナーから確定した石）
+            detail.DiffWeight = _weights.Mid.DiffWeight; // 中盤以降は駒数も少し考慮
         }
-        else // 序盤
+        else // 序盤: 位置と安定石を重視。序盤の駒数差は終盤で容易に逆転されるため無視
         {
-            detail.Position = PositionScore(board);
-            detail.Mobility = MobilityScore(board);
+            detail.Position  = PositionScore(board);
+            detail.Mobility  = MobilityScore(board);
             detail.Stability = StabilityScore(board);
             detail.StoneDiff = board.PlayerCount - board.OpponentCount;
-            detail.PosWeight = 30;
-            detail.MobWeight = 15;
-            detail.StaWeight = 20;
-            detail.DiffWeight = 0;
+            detail.PosWeight  = _weights.Early.PosWeight;  // 角・辺の位置取りを最重視
+            detail.MobWeight  = _weights.Early.MobWeight;  // 機動力を高く評価
+            detail.StaWeight  = _weights.Early.StaWeight;  // 安定石（早期の角確保）
+            detail.DiffWeight = _weights.Early.DiffWeight; // 序盤の駒数差は無視
         }
 
         return detail.Total;
     }
 
-    // 位置評価テーブル（研究された重みを使用）
-    private static readonly int[] PositionWeight = {
-        500, -150,  30,  10,  10,  30, -150,  500,
-       -150, -250,  -5,  -5,  -5,  -5, -250, -150,
-         30,   -5,  15,   3,   3,  15,   -5,   30,
-         10,   -5,   3,   3,   3,   3,   -5,   10,
-         10,   -5,   3,   3,   3,   3,   -5,   10,
-         30,   -5,  15,   3,   3,  15,   -5,   30,
-       -150, -250,  -5,  -5,  -5,  -5, -250, -150,
-        500, -150,  30,  10,  10,  30, -150,  500,
-    };
+    // 位置評価テーブルは _positionTable（WeightSetから注入）を使用
 
-    private static int PositionScore(BitBoard board)
+    private int PositionScore(BitBoard board)
     {
         int score = 0;
         ulong p = board.Player;
@@ -474,13 +534,13 @@ public class OthelloAI
         while (p != 0)
         {
             int pos = BitOperations.TrailingZeroCount(p);
-            score += PositionWeight[pos];
+            score += _positionTable[pos];
             p &= p - 1;
         }
         while (o != 0)
         {
             int pos = BitOperations.TrailingZeroCount(o);
-            score -= PositionWeight[pos];
+            score -= _positionTable[pos];
             o &= o - 1;
         }
 
@@ -512,85 +572,128 @@ public class OthelloAI
     }
 
     /// <summary>
-    /// 安定石評価：コーナーおよびコーナーから連続している安定石を評価
+    /// 安定石評価：コーナーおよびコーナーから連続している安定石を評価。
+    /// 両プレイヤーを一度のスキャンで計算することで重複処理を排除。
     /// </summary>
     private static int StabilityScore(BitBoard board)
     {
-        int myStable = CountStable(board.Player, board.Opponent);
-        int oppStable = CountStable(board.Opponent, board.Player);
+        var (myStable, oppStable) = CountStableBoth(board.Player, board.Opponent);
         return myStable - oppStable;
     }
 
-    private static int CountStable(ulong mine, ulong opp)
+    /// <summary>
+    /// 自分と相手の安定石数を一度のスキャンで同時に計算する。
+    /// コーナーを起点に水平・垂直方向へ連結している確定石を伝播で求める。
+    /// </summary>
+    private static (int myStable, int oppStable) CountStableBoth(ulong mine, ulong opp)
     {
-        ulong stable = 0UL;
+        ulong stableMine = 0UL;
+        ulong stableOpp  = 0UL;
         ulong all = mine | opp;
 
+        // コーナー（確定的に安定）を起点にする
         ulong corners = 0x8100000000000081UL;
-        stable |= corners & mine;
+        stableMine |= corners & mine;
+        stableOpp  |= corners & opp;
 
-        if (stable == 0) return 0;
+        if (stableMine == 0 && stableOpp == 0) return (0, 0);
 
         bool changed = true;
         while (changed)
         {
             changed = false;
-            ulong newStable = stable;
+            ulong newStableMine = stableMine;
+            ulong newStableOpp  = stableOpp;
 
             // 行方向（水平）の安定石伝播
             for (int row = 0; row < 8; row++)
             {
-                ulong rowMask = 0xFFUL << (row * 8);
-                ulong rowAll = all & rowMask;
-                ulong rowMine = mine & rowMask;
-                ulong rowStable = stable & rowMask;
+                ulong rowMask    = 0xFFUL << (row * 8);
+                ulong rowAll     = all  & rowMask;
+                ulong rowMine    = mine & rowMask;
+                ulong rowOpp     = opp  & rowMask;
+                ulong rowStableM = stableMine & rowMask;
+                ulong rowStableO = stableOpp  & rowMask;
 
                 if (rowAll == rowMask)
-                    newStable |= rowMine;
-                else if (rowStable != 0)
                 {
-                    ulong leftFill = rowStable;
-                    for (int i = 0; i < 7; i++)
-                        leftFill |= rowMine & (leftFill << 1) & rowMask;
-                    ulong rightFill = rowStable;
-                    for (int i = 0; i < 7; i++)
-                        rightFill |= rowMine & (rightFill >> 1) & rowMask;
-                    newStable |= leftFill & rightFill;
+                    // 行が全て埋まっている場合は全ての自石・相手石が安定
+                    newStableMine |= rowMine;
+                    newStableOpp  |= rowOpp;
+                }
+                else
+                {
+                    // 既存の安定石から左右に連結伝播
+                    if (rowStableM != 0)
+                    {
+                        ulong lf = rowStableM;
+                        for (int i = 0; i < 7; i++) lf |= rowMine & ((lf << 1) & rowMask);
+                        ulong rf = rowStableM;
+                        for (int i = 0; i < 7; i++) rf |= rowMine & ((rf >> 1) & rowMask);
+                        newStableMine |= lf & rf;
+                    }
+                    if (rowStableO != 0)
+                    {
+                        ulong lf = rowStableO;
+                        for (int i = 0; i < 7; i++) lf |= rowOpp & ((lf << 1) & rowMask);
+                        ulong rf = rowStableO;
+                        for (int i = 0; i < 7; i++) rf |= rowOpp & ((rf >> 1) & rowMask);
+                        newStableOpp |= lf & rf;
+                    }
                 }
             }
 
             // 列方向（垂直）の安定石伝播
             for (int col = 0; col < 8; col++)
             {
-                ulong colMask = 0x0101010101010101UL << col;
-                ulong colAll = all & colMask;
-                ulong colMine = mine & colMask;
-                ulong colStable = stable & colMask;
+                ulong colMask    = 0x0101010101010101UL << col;
+                ulong colAll     = all  & colMask;
+                ulong colMine    = mine & colMask;
+                ulong colOpp     = opp  & colMask;
+                ulong colStableM = stableMine & colMask;
+                ulong colStableO = stableOpp  & colMask;
 
                 if (colAll == colMask)
-                    newStable |= colMine;
-                else if (colStable != 0)
                 {
-                    ulong upFill = colStable;
-                    for (int i = 0; i < 7; i++)
-                        upFill |= colMine & ((upFill << 8) & colMask);
-                    ulong downFill = colStable;
-                    for (int i = 0; i < 7; i++)
-                        downFill |= colMine & ((downFill >> 8) & colMask);
-                    newStable |= upFill & downFill;
+                    newStableMine |= colMine;
+                    newStableOpp  |= colOpp;
+                }
+                else
+                {
+                    if (colStableM != 0)
+                    {
+                        ulong uf = colStableM;
+                        for (int i = 0; i < 7; i++) uf |= colMine & ((uf << 8) & colMask);
+                        ulong df = colStableM;
+                        for (int i = 0; i < 7; i++) df |= colMine & ((df >> 8) & colMask);
+                        newStableMine |= uf & df;
+                    }
+                    if (colStableO != 0)
+                    {
+                        ulong uf = colStableO;
+                        for (int i = 0; i < 7; i++) uf |= colOpp & ((uf << 8) & colMask);
+                        ulong df = colStableO;
+                        for (int i = 0; i < 7; i++) df |= colOpp & ((df >> 8) & colMask);
+                        newStableOpp |= uf & df;
+                    }
                 }
             }
 
-            if (newStable != stable) { stable = newStable; changed = true; }
+            if (newStableMine != stableMine || newStableOpp != stableOpp)
+            {
+                stableMine = newStableMine;
+                stableOpp  = newStableOpp;
+                changed = true;
+            }
         }
 
-        return BitOperations.PopCount(stable);
+        return (BitOperations.PopCount(stableMine), BitOperations.PopCount(stableOpp));
     }
 }
 
 public enum AIStrength
 {
-    nuub,
+    Beginner,
     normal,
     expert,
     professional

@@ -11,6 +11,8 @@ public static class OthelloDebugLog
 {
     public static bool _isDebug = false;
     public static LogLevel CurrentLevel = LogLevel.Debug;
+    /// <summary>学習モード中はtrueにしてコンソール出力を全て抑制する</summary>
+    public static bool SuppressOutput = false;
 
     private static StreamWriter? sw;
     private static StreamWriter? gameSw;
@@ -43,7 +45,8 @@ public static class OthelloDebugLog
     public static void StopAILog()
     {
         thinkTimer.Stop();
-        Console.WriteLine($"AI思考時間: {thinkTimer.ElapsedMilliseconds} ms");
+        if (!SuppressOutput)
+            Console.WriteLine($"AI思考時間: {thinkTimer.ElapsedMilliseconds} ms");
         sw?.WriteLine($"AI思考時間: {thinkTimer.ElapsedMilliseconds} ms");
         if (!_isDebug) return;
 
@@ -64,6 +67,7 @@ public static class OthelloDebugLog
     /// </summary>
     public static void InfoLog(string message)
     {
+        if (SuppressOutput) return;
         Console.WriteLine($"[INFO] {message}");
         sw?.WriteLine($"[INFO] {message}");
     }

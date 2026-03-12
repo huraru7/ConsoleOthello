@@ -2,7 +2,7 @@ public struct MainGameData
 {
     public int[,] _tiles;
     public GameTurn _gameTurn;
-    public int _turnConter;
+    public int _turnCounter;
     public int _turnNum;
     public GameMode _gameMode;
     public AIStrength _AIStrength;
@@ -13,7 +13,7 @@ public struct MainGameData
         MainGameData clone = new MainGameData();
         clone._tiles = (int[,])this._tiles.Clone();
         clone._gameTurn = this._gameTurn;
-        clone._turnConter = this._turnConter;
+        clone._turnCounter = this._turnCounter;
         clone._turnNum = this._turnNum;
         clone._gameMode = this._gameMode;
         clone._AIStrength = this._AIStrength;
@@ -24,7 +24,7 @@ public struct MainGameData
 
 public enum GameTurn
 {
-    prayer,
+    Player,
     AI
 }
 public enum GameMode
