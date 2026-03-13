@@ -455,6 +455,19 @@ public class OthelloAI
         for (int i = 0; i < moveCount; i++)
         {
             BitBoard next = board.DoMove(moves[i]);
+
+            // ETC（Enhanced Transposition Cutoff）:
+            // 子局面の置換表を事前確認し、βカット可能なら即座に枝刈りする。
+            // 子のUpperBound S ≤ -beta → 子の真値 ≤ S ≤ -beta → 親は ≥ beta（βカット）
+            ulong childHash = _tt.ComputeHash(next);
+            if (_tt.TryGetRaw(childHash, out TTEntryType childType, out int childRawScore)
+                && childType == TTEntryType.UpperBound && childRawScore <= -beta)
+            {
+                _abCutCount++;
+                _tt.Store(hash, 64, beta, alpha, beta, moves[i]);
+                return beta;
+            }
+
             _recursionsCount++;
 
             int score;
