@@ -307,10 +307,21 @@ public class OthelloAI
             }
             else
             {
-                // null window 探索（PVS）
+                // LMR（Late Move Reductions）:
+                // Move Ordering で後半の手（TT/Killer以外）は外れの可能性が高い。
+                // depth-2 で Null Window 探索し、alpha を超えた場合のみ full depth で再探索する。
+                // 条件: depth>=3 かつ insertPos（TT/Killer枠）より後の手
                 int dummy = -1;
-                score = -NegaScout(next, depth - 1, -alpha - 1, -alpha, ref dummy);
-                // null windowを超えた場合のみ再探索
+                bool canLMR = depth >= 3 && i >= Math.Max(2, insertPos);
+                int lmrDepth = canLMR ? depth - 2 : depth - 1;
+
+                score = -NegaScout(next, lmrDepth, -alpha - 1, -alpha, ref dummy);
+
+                // LMR で alpha を超えた → full depth の Null Window で再確認
+                if (canLMR && score > alpha)
+                    score = -NegaScout(next, depth - 1, -alpha - 1, -alpha, ref dummy);
+
+                // PVS再探索: Null Window を超えた場合のみ（この手が PV 候補）
                 if (score > alpha && score < beta)
                 {
                     _pvsResearchCount++;

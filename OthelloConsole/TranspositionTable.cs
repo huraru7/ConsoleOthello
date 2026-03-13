@@ -151,6 +151,24 @@ public class TranspositionTable
     }
 
     /// <summary>
+    /// ETC（Enhanced Transposition Cutoff）用：深さチェックなしで置換表エントリを取得する。
+    /// 子局面のカットオフ可能性を事前に検出するために使用する。
+    /// </summary>
+    public bool TryGetRaw(ulong hash, out TTEntryType type, out int score)
+    {
+        ref TTEntry entry = ref _table[hash & TableMask];
+        if (entry.Hash == hash)
+        {
+            type  = entry.Type;
+            score = entry.Score;
+            return true;
+        }
+        type  = default;
+        score = 0;
+        return false;
+    }
+
+    /// <summary>
     /// 置換表からスコアを見ずに最善手だけを取得する（完全読み後のルート最善手取得用）
     /// </summary>
     public bool TryGetBestMoveOnly(ulong hash, out int bestMove)
