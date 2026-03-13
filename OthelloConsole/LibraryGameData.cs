@@ -15,6 +15,7 @@ public class PhaseWeights
     public int DiffWeight   { get; set; }  // 駒数差の重み
     public int ParityWeight   { get; set; }  // パリティの重み（奇数空きマス＝現プレイヤー有利）
     public int FrontierWeight { get; set; }  // フロンティアの重み（空きマスに隣接する不安定石を減らす）
+    public int PotMobWeight   { get; set; }  // ポテンシャル機動力の重み（将来の合法手数の推定）
 }
 
 /// <summary>
@@ -30,8 +31,8 @@ public class WeightSet
     /// <summary>現在のハードコード値と同じデフォルト重みを返す</summary>
     public static WeightSet Default() => new WeightSet
     {
-        Early = new PhaseWeights { PosWeight = 30, MobWeight = 15, StaWeight = 20, DiffWeight = 0, ParityWeight = 0, FrontierWeight = 3 },
-        Mid   = new PhaseWeights { PosWeight = 25, MobWeight = 10, StaWeight = 15, DiffWeight = 5, ParityWeight = 5, FrontierWeight = 5 },
+        Early = new PhaseWeights { PosWeight = 30, MobWeight = 15, StaWeight = 20, DiffWeight = 0, ParityWeight = 0, FrontierWeight = 3, PotMobWeight = 0 },
+        Mid   = new PhaseWeights { PosWeight = 25, MobWeight = 10, StaWeight = 15, DiffWeight = 5, ParityWeight = 5, FrontierWeight = 5, PotMobWeight = 0 },
         PositionTable = new int[]
         {
              500, -150,  30,  10,  10,  30, -150,  500,
@@ -71,12 +72,13 @@ public class WeightSet
     {
         Early = new PhaseWeights
         {
-            PosWeight    = Early.PosWeight,
-            MobWeight    = Early.MobWeight,
-            StaWeight    = Early.StaWeight,
-            DiffWeight   = Early.DiffWeight,
+            PosWeight      = Early.PosWeight,
+            MobWeight      = Early.MobWeight,
+            StaWeight      = Early.StaWeight,
+            DiffWeight     = Early.DiffWeight,
             ParityWeight   = Early.ParityWeight,
             FrontierWeight = Early.FrontierWeight,
+            PotMobWeight   = Early.PotMobWeight,
         },
         Mid = new PhaseWeights
         {
@@ -86,6 +88,7 @@ public class WeightSet
             DiffWeight     = Mid.DiffWeight,
             ParityWeight   = Mid.ParityWeight,
             FrontierWeight = Mid.FrontierWeight,
+            PotMobWeight   = Mid.PotMobWeight,
         },
         PositionTable = (int[])PositionTable.Clone()
     };
