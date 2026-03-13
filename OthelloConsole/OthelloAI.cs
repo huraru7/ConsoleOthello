@@ -12,16 +12,19 @@ public struct EvalDetail
     public int StoneDiff;     // 駒数差
     public int Parity;          // パリティ (+1=有利, -1=不利)
     public int Frontier;        // フロンティアスコア（相手フロンティア多-自分フロンティア多 を正規化）
+    public int PotMob;          // ポテンシャル機動力（将来の合法手数の推定、正規化）
     public int PosWeight;       // 位置評価の重み
     public int MobWeight;       // 機動力の重み
     public int StaWeight;       // 安定石の重み
     public int DiffWeight;      // 駒数差の重み
     public int ParityWeight;    // パリティの重み
     public int FrontierWeight;  // フロンティアの重み
+    public int PotMobWeight;    // ポテンシャル機動力の重み
 
     public int Total => Position * PosWeight + Mobility * MobWeight
                       + Stability * StaWeight + StoneDiff * DiffWeight
-                      + Parity * ParityWeight + Frontier * FrontierWeight;
+                      + Parity * ParityWeight + Frontier * FrontierWeight
+                      + PotMob * PotMobWeight;
 
     public override string ToString()
         => $"位置={Position}×{PosWeight}={Position * PosWeight}  "
@@ -30,6 +33,7 @@ public struct EvalDetail
          + $"駒数差={StoneDiff}×{DiffWeight}={StoneDiff * DiffWeight}  "
          + $"パリティ={Parity}×{ParityWeight}={Parity * ParityWeight}  "
          + $"フロンティア={Frontier}×{FrontierWeight}={Frontier * FrontierWeight}  "
+         + $"潜在機動力={PotMob}×{PotMobWeight}={PotMob * PotMobWeight}  "
          + $"合計={Total}";
 }
 
@@ -567,12 +571,14 @@ public class OthelloAI
             detail.StoneDiff = board.PlayerCount - board.OpponentCount;
             detail.Parity    = board.EmptyCount % 2 == 1 ? 1 : -1;
             detail.Frontier  = FrontierScore(board);
+            detail.PotMob    = PotentialMobilityScore(board);
             detail.PosWeight      = _weights.Mid.PosWeight;
             detail.MobWeight      = _weights.Mid.MobWeight;
             detail.StaWeight      = _weights.Mid.StaWeight;
             detail.DiffWeight     = _weights.Mid.DiffWeight;
             detail.ParityWeight   = _weights.Mid.ParityWeight;
             detail.FrontierWeight = _weights.Mid.FrontierWeight;
+            detail.PotMobWeight   = _weights.Mid.PotMobWeight;
         }
         else // 序盤: 位置と安定石を重視。序盤の駒数差は終盤で容易に逆転されるため無視
         {
@@ -582,12 +588,14 @@ public class OthelloAI
             detail.StoneDiff = board.PlayerCount - board.OpponentCount;
             detail.Parity    = board.EmptyCount % 2 == 1 ? 1 : -1;
             detail.Frontier  = FrontierScore(board);
+            detail.PotMob    = PotentialMobilityScore(board);
             detail.PosWeight      = _weights.Early.PosWeight;
             detail.MobWeight      = _weights.Early.MobWeight;
             detail.StaWeight      = _weights.Early.StaWeight;
             detail.DiffWeight     = _weights.Early.DiffWeight;
             detail.ParityWeight   = _weights.Early.ParityWeight;
             detail.FrontierWeight = _weights.Early.FrontierWeight;
+            detail.PotMobWeight   = _weights.Early.PotMobWeight;
         }
 
         return detail.Total;
@@ -666,6 +674,48 @@ public class OthelloAI
         int total = myFrontier + oppFrontier;
         // 自分のフロンティアが少ないほど正の値（有利）
         return total == 0 ? 0 : 100 * (oppFrontier - myFrontier) / total;
+    }
+
+    /// <summary>
+    /// ポテンシャル機動力評価: 将来の合法手数の推定値。
+    /// 空きマスに隣接する相手の石（= 自分が将来打てる領域）と
+    /// 空きマスに隣接する自分の石（= 相手が将来打てる領域）の差を正規化した値。
+    /// 実際のGetMoves()より安価で、MobilityScoreの将来情報として補完的に機能する。
+    /// </summary>
+    private static int PotentialMobilityScore(BitBoard board)
+    {
+        ulong empty = ~(board.Player | board.Opponent);
+        const ulong NotAFile = 0xFEFEFEFEFEFEFEFEUL;
+        const ulong NotHFile = 0x7F7F7F7F7F7F7F7FUL;
+
+        // 自分の潜在機動力: 空きマスに隣接する相手の石の周辺の空きマス
+        ulong oppExp = 0UL;
+        ulong opp = board.Opponent;
+        oppExp |= opp << 8;
+        oppExp |= opp >> 8;
+        oppExp |= (opp & NotHFile) << 1;
+        oppExp |= (opp & NotAFile) >> 1;
+        oppExp |= (opp & NotHFile) << 9;
+        oppExp |= (opp & NotAFile) << 7;
+        oppExp |= (opp & NotHFile) >> 7;
+        oppExp |= (opp & NotAFile) >> 9;
+        int myPotential = BitOperations.PopCount(oppExp & empty);
+
+        // 相手の潜在機動力: 空きマスに隣接する自分の石の周辺の空きマス
+        ulong pExp = 0UL;
+        ulong p = board.Player;
+        pExp |= p << 8;
+        pExp |= p >> 8;
+        pExp |= (p & NotHFile) << 1;
+        pExp |= (p & NotAFile) >> 1;
+        pExp |= (p & NotHFile) << 9;
+        pExp |= (p & NotAFile) << 7;
+        pExp |= (p & NotHFile) >> 7;
+        pExp |= (p & NotAFile) >> 9;
+        int oppPotential = BitOperations.PopCount(pExp & empty);
+
+        int total = myPotential + oppPotential;
+        return total == 0 ? 0 : 100 * (myPotential - oppPotential) / total;
     }
 
     /// <summary>
