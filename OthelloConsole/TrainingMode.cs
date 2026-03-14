@@ -215,7 +215,7 @@ public static class HillClimbTrainer
     {
         int delta = _rng.Next(2, 8) * (_rng.NextDouble() < 0.5 ? 1 : -1);
         PhaseWeights phase = _rng.NextDouble() < 0.5 ? ws.Early : ws.Mid;
-        switch (_rng.Next(6))
+        switch (_rng.Next(7))
         {
             case 0: phase.PosWeight      = Math.Max(0, phase.PosWeight      + delta); break;
             case 1: phase.MobWeight      = Math.Max(0, phase.MobWeight      + delta); break;
@@ -223,6 +223,7 @@ public static class HillClimbTrainer
             case 3: phase.DiffWeight     = Math.Max(0, phase.DiffWeight     + delta); break;
             case 4: phase.ParityWeight   = Math.Max(0, phase.ParityWeight   + delta); break;
             case 5: phase.FrontierWeight = Math.Max(0, phase.FrontierWeight + delta); break;
+            case 6: phase.PotMobWeight   = Math.Max(0, phase.PotMobWeight   + delta); break;
         }
     }
 
@@ -261,18 +262,20 @@ public static class HillClimbTrainer
         // フェーズ重みの差分チェック
         var phaseChecks = new (string label, int bVal, int aVal)[]
         {
-            ("序盤 位置",     before.Early.PosWeight,    after.Early.PosWeight),
-            ("序盤 機動力",   before.Early.MobWeight,    after.Early.MobWeight),
-            ("序盤 安定石",   before.Early.StaWeight,    after.Early.StaWeight),
-            ("序盤 駒数差",   before.Early.DiffWeight,   after.Early.DiffWeight),
+            ("序盤 位置",         before.Early.PosWeight,      after.Early.PosWeight),
+            ("序盤 機動力",       before.Early.MobWeight,      after.Early.MobWeight),
+            ("序盤 安定石",       before.Early.StaWeight,      after.Early.StaWeight),
+            ("序盤 駒数差",       before.Early.DiffWeight,     after.Early.DiffWeight),
             ("序盤 パリティ",     before.Early.ParityWeight,   after.Early.ParityWeight),
             ("序盤 フロンティア", before.Early.FrontierWeight, after.Early.FrontierWeight),
+            ("序盤 潜在機動力",   before.Early.PotMobWeight,   after.Early.PotMobWeight),
             ("中盤 位置",         before.Mid.PosWeight,        after.Mid.PosWeight),
             ("中盤 機動力",       before.Mid.MobWeight,        after.Mid.MobWeight),
             ("中盤 安定石",       before.Mid.StaWeight,        after.Mid.StaWeight),
             ("中盤 駒数差",       before.Mid.DiffWeight,       after.Mid.DiffWeight),
             ("中盤 パリティ",     before.Mid.ParityWeight,     after.Mid.ParityWeight),
             ("中盤 フロンティア", before.Mid.FrontierWeight,   after.Mid.FrontierWeight),
+            ("中盤 潜在機動力",   before.Mid.PotMobWeight,     after.Mid.PotMobWeight),
         };
         foreach (var (label, bVal, aVal) in phaseChecks)
         {
@@ -299,10 +302,290 @@ public static class HillClimbTrainer
         Console.WriteLine("\n--- 学習後の重み ---");
         Console.WriteLine($"序盤: 位置={ws.Early.PosWeight,3}  機動力={ws.Early.MobWeight,3}  " +
                           $"安定石={ws.Early.StaWeight,3}  駒数差={ws.Early.DiffWeight,3}  " +
-                          $"パリティ={ws.Early.ParityWeight,3}  フロンティア={ws.Early.FrontierWeight,3}");
+                          $"パリティ={ws.Early.ParityWeight,3}  フロンティア={ws.Early.FrontierWeight,3}  " +
+                          $"潜在機動力={ws.Early.PotMobWeight,3}");
         Console.WriteLine($"中盤: 位置={ws.Mid.PosWeight,3}  機動力={ws.Mid.MobWeight,3}  " +
                           $"安定石={ws.Mid.StaWeight,3}  駒数差={ws.Mid.DiffWeight,3}  " +
-                          $"パリティ={ws.Mid.ParityWeight,3}  フロンティア={ws.Mid.FrontierWeight,3}");
+                          $"パリティ={ws.Mid.ParityWeight,3}  フロンティア={ws.Mid.FrontierWeight,3}  " +
+                          $"潜在機動力={ws.Mid.PotMobWeight,3}");
+        Console.WriteLine("位置評価テーブル:");
+        for (int r = 0; r < 8; r++)
+        {
+            Console.Write("  ");
+            for (int c = 0; c < 8; c++)
+                Console.Write($"{ws.PositionTable[r * 8 + c],5}");
+            Console.WriteLine();
+        }
+    }
+}
+
+/// <summary>
+/// 焼きなまし法（Simulated Annealing）による評価重みの自動最適化。
+/// 悪化した解も確率的に受け入れることで局所最適を脱出し、
+/// 適応ステップサイズで探索・活用のバランスを自動調整する。
+/// </summary>
+public static class SATrainer
+{
+    private static readonly Random _rng = new();
+    private const string WeightsDir = "weights";
+
+    /// <summary>
+    /// 焼きなまし法による学習を実行する。
+    /// </summary>
+    /// <param name="maxIter">最大イテレーション数</param>
+    /// <param name="gamesPerEval">1イテレーションあたりの対局数</param>
+    /// <param name="strength">使用するAI強度</param>
+    /// <param name="t0">初期温度（石数単位。大きいほど序盤に多様探索）</param>
+    /// <param name="tf">終了温度（デフォルト0.1で終盤はほぼ貪欲探索）</param>
+    public static void Run(int maxIter, int gamesPerEval, AIStrength strength,
+                           double t0 = 5.0, double tf = 0.1)
+    {
+        Directory.CreateDirectory(WeightsDir);
+        string savePath = Path.Combine(WeightsDir, "best_weights.json");
+
+        WeightSet current = File.Exists(savePath)
+            ? WeightSet.Load(savePath)
+            : WeightSet.Default();
+        // best は歴代最高の重みを保持する（current とは独立）
+        WeightSet best = current.Clone();
+
+        if (File.Exists(savePath))
+            Console.WriteLine($"既存の重みを読み込みました: {Path.GetFullPath(savePath)}");
+        else
+            Console.WriteLine("デフォルト重みから学習を開始します。");
+
+        Console.WriteLine($"設定: {maxIter}イテレーション / {gamesPerEval}ゲーム/評価 / AI強度:{strength}");
+        Console.WriteLine($"アルゴリズム: 焼きなまし法  T0={t0:F1}石 → Tf={tf:F2}石（幾何冷却）");
+        Console.WriteLine("Ctrl+C で中断できます（中断前の最善重みは自動保存済み）\n");
+
+        int totalAdopted  = 0;
+        double stepMul    = 1.0;   // 適応ステップ倍率（1/5則で自動調整）
+        var recentAccepted = new Queue<bool>(); // 直近50回の採用/棄却履歴
+        var startTime = DateTime.Now;
+
+        // 定期ベスト更新：50イテレーションごとに current vs best を対戦し best を更新
+        const int BestUpdateInterval = 50;
+
+        try
+        {
+            for (int iter = 1; iter <= maxIter; iter++)
+            {
+                // 温度スケジュール（幾何冷却）: T0 → Tf
+                double progress    = (double)(iter - 1) / Math.Max(maxIter - 1, 1);
+                double temperature = t0 * Math.Pow(tf / t0, progress);
+
+                WeightSet previous  = current;
+                WeightSet candidate = Perturb(current, stepMul);
+
+                // 評価：candidate vs current で gamesPerEval 回対戦
+                int winsCandidate = 0, winsCurrent = 0, draws = 0;
+                int totalMargin = 0;
+                for (int g = 0; g < gamesPerEval; g++)
+                {
+                    bool candidateIsBlack = (g % 2 == 0);
+                    (int b, int w) = candidateIsBlack
+                        ? GameRunner.Play(candidate, current, strength)
+                        : GameRunner.Play(current, candidate, strength);
+
+                    int candidateScore = candidateIsBlack ? b : w;
+                    int currentScore   = candidateIsBlack ? w : b;
+
+                    totalMargin += candidateScore - currentScore;
+                    if      (candidateScore > currentScore) winsCandidate++;
+                    else if (candidateScore < currentScore) winsCurrent++;
+                    else                                    draws++;
+                }
+
+                double avgMargin = (double)totalMargin / gamesPerEval;
+
+                // SA採用判定：改善は必ず採用、悪化は exp(Δ/T) の確率で採用
+                bool adopted;
+                if (avgMargin >= 0)
+                    adopted = true;
+                else
+                {
+                    double prob = Math.Exp(avgMargin / temperature);
+                    adopted = _rng.NextDouble() < prob;
+                }
+
+                if (adopted)
+                {
+                    current = candidate;
+                    totalAdopted++;
+                    // 改善時のみ即座にベスト更新
+                    if (avgMargin > 0)
+                    {
+                        best = candidate.Clone();
+                        best.Save(savePath);
+                    }
+                }
+
+                // 定期ベスト更新（current が best より強いか確認）
+                if (iter % BestUpdateInterval == 0)
+                {
+                    int bestMargin = 0;
+                    for (int g = 0; g < gamesPerEval; g++)
+                    {
+                        bool currentIsBlack = (g % 2 == 0);
+                        (int b, int w) = currentIsBlack
+                            ? GameRunner.Play(current, best, strength)
+                            : GameRunner.Play(best, current, strength);
+                        int cs = currentIsBlack ? b : w;
+                        int bs = currentIsBlack ? w : b;
+                        bestMargin += cs - bs;
+                    }
+                    if (bestMargin > 0)
+                    {
+                        best = current.Clone();
+                        best.Save(savePath);
+                        Console.WriteLine($"  [定期検証] current が best を更新（差={bestMargin / (double)gamesPerEval:+0.0;-0.0}石）");
+                    }
+                }
+
+                // 適応ステップサイズ（直近50回の採用率を監視し 1/5 則で調整）
+                recentAccepted.Enqueue(adopted);
+                if (recentAccepted.Count > 50) recentAccepted.Dequeue();
+                if (recentAccepted.Count >= 20)
+                {
+                    double rate = recentAccepted.Count(r => r) / (double)recentAccepted.Count;
+                    if      (rate > 0.30) stepMul = Math.Min(3.0, stepMul * 1.2);
+                    else if (rate < 0.10) stepMul = Math.Max(0.3, stepMul * 0.8);
+                }
+
+                // 進捗表示
+                string mark    = adopted ? "✓ 採用" : "  棄却";
+                var    elapsed = DateTime.Now - startTime;
+                string elapsedStr = elapsed.ToString(@"hh\:mm\:ss");
+
+                var avgPerIter = elapsed / iter;
+                var remaining  = avgPerIter * (maxIter - iter);
+                string etaStr  = iter < 3 ? "--:--:--" : remaining.ToString(@"hh\:mm\:ss");
+
+                int    filled = (int)(iter * 20.0 / maxIter);
+                string bar    = "[" + new string('#', filled) + new string('.', 20 - filled) + "]";
+
+                string diff = DescribeDiff(previous, candidate);
+
+                Console.WriteLine(
+                    $"{bar} {iter * 100.0 / maxIter,5:F1}%  [{iter,5}/{maxIter}] {mark}  " +
+                    $"平均差={avgMargin:+0.0;-0.0}石  (勝:{winsCandidate,2} 負:{winsCurrent,2} 引:{draws,2})  " +
+                    $"採用率={totalAdopted * 100.0 / iter:F1}%  T={temperature:F2}  step={stepMul:F2}  " +
+                    $"経過:{elapsedStr}  残り:{etaStr}  変更:{diff}");
+
+                if (iter % 100 == 0)
+                {
+                    Console.WriteLine($"\n  ── {iter}イテレーション完了 ──  採用回数:{totalAdopted}  " +
+                                      $"平均:{avgPerIter.TotalSeconds:F2}秒/iter\n");
+                }
+            }
+
+            Console.WriteLine($"\n学習完了。採用率={totalAdopted * 100.0 / maxIter:F1}%");
+            Console.WriteLine($"最善重みを保存しました: {Path.GetFullPath(savePath)}");
+            PrintWeightSummary(best);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"\n[エラー] 学習中に例外が発生しました: {ex.Message}");
+            Console.WriteLine($"  種類: {ex.GetType().Name}");
+            Console.WriteLine($"最後に保存された重みは {Path.GetFullPath(savePath)} にあります。");
+        }
+    }
+
+    /// <summary>重みをランダムに摂動させたコピーを返す。stepMul で摂動量をスケールする。</summary>
+    private static WeightSet Perturb(WeightSet src, double stepMul = 1.0)
+    {
+        var next = src.Clone();
+        if (_rng.NextDouble() < 0.4)
+            PerturbPhaseWeights(next, stepMul);
+        else
+            PerturbPositionTable(next, stepMul);
+        return next;
+    }
+
+    /// <summary>序盤・中盤のいずれか1つのフェーズ重みをランダムに変化させる</summary>
+    private static void PerturbPhaseWeights(WeightSet ws, double stepMul)
+    {
+        int rawDelta = _rng.Next(2, 8);
+        int delta    = (int)Math.Max(1, rawDelta * stepMul) * (_rng.NextDouble() < 0.5 ? 1 : -1);
+        PhaseWeights phase = _rng.NextDouble() < 0.5 ? ws.Early : ws.Mid;
+        switch (_rng.Next(7))
+        {
+            case 0: phase.PosWeight      = Math.Max(0, phase.PosWeight      + delta); break;
+            case 1: phase.MobWeight      = Math.Max(0, phase.MobWeight      + delta); break;
+            case 2: phase.StaWeight      = Math.Max(0, phase.StaWeight      + delta); break;
+            case 3: phase.DiffWeight     = Math.Max(0, phase.DiffWeight     + delta); break;
+            case 4: phase.ParityWeight   = Math.Max(0, phase.ParityWeight   + delta); break;
+            case 5: phase.FrontierWeight = Math.Max(0, phase.FrontierWeight + delta); break;
+            case 6: phase.PotMobWeight   = Math.Max(0, phase.PotMobWeight   + delta); break;
+        }
+    }
+
+    /// <summary>4回転対称を維持しながら位置評価テーブルの1グループを変化させる</summary>
+    private static void PerturbPositionTable(WeightSet ws, double stepMul)
+    {
+        int rawDelta = _rng.Next(5, 26);
+        int delta    = (int)Math.Max(1, rawDelta * stepMul) * (_rng.NextDouble() < 0.5 ? 1 : -1);
+        int row = _rng.Next(4);
+        int col = _rng.Next(4);
+        foreach (int idx in GetSymmetricCells(row, col))
+            ws.PositionTable[idx] += delta;
+    }
+
+    /// <summary>指定マスと4回転対称な4マスのインデックスを返す</summary>
+    private static int[] GetSymmetricCells(int r, int c) => new[]
+    {
+        r       * 8 + c,
+        r       * 8 + (7 - c),
+        (7 - r) * 8 + c,
+        (7 - r) * 8 + (7 - c)
+    };
+
+    /// <summary>before と after の差分を1行の文字列で返す</summary>
+    private static string DescribeDiff(WeightSet before, WeightSet after)
+    {
+        var phaseChecks = new (string label, int bVal, int aVal)[]
+        {
+            ("序盤 位置",         before.Early.PosWeight,      after.Early.PosWeight),
+            ("序盤 機動力",       before.Early.MobWeight,      after.Early.MobWeight),
+            ("序盤 安定石",       before.Early.StaWeight,      after.Early.StaWeight),
+            ("序盤 駒数差",       before.Early.DiffWeight,     after.Early.DiffWeight),
+            ("序盤 パリティ",     before.Early.ParityWeight,   after.Early.ParityWeight),
+            ("序盤 フロンティア", before.Early.FrontierWeight, after.Early.FrontierWeight),
+            ("序盤 潜在機動力",   before.Early.PotMobWeight,   after.Early.PotMobWeight),
+            ("中盤 位置",         before.Mid.PosWeight,        after.Mid.PosWeight),
+            ("中盤 機動力",       before.Mid.MobWeight,        after.Mid.MobWeight),
+            ("中盤 安定石",       before.Mid.StaWeight,        after.Mid.StaWeight),
+            ("中盤 駒数差",       before.Mid.DiffWeight,       after.Mid.DiffWeight),
+            ("中盤 パリティ",     before.Mid.ParityWeight,     after.Mid.ParityWeight),
+            ("中盤 フロンティア", before.Mid.FrontierWeight,   after.Mid.FrontierWeight),
+            ("中盤 潜在機動力",   before.Mid.PotMobWeight,     after.Mid.PotMobWeight),
+        };
+        foreach (var (label, bVal, aVal) in phaseChecks)
+            if (bVal != aVal) return $"{label} {bVal}→{aVal}";
+
+        for (int i = 0; i < 64; i++)
+        {
+            if (before.PositionTable[i] != after.PositionTable[i])
+            {
+                int r = i / 8, c = i % 8;
+                return $"位置[{r},{c}] {before.PositionTable[i]}→{after.PositionTable[i]}";
+            }
+        }
+        return "-";
+    }
+
+    /// <summary>最善重みの内容を見やすく表示する</summary>
+    private static void PrintWeightSummary(WeightSet ws)
+    {
+        Console.WriteLine("\n--- 最善重み（焼きなまし法） ---");
+        Console.WriteLine($"序盤: 位置={ws.Early.PosWeight,3}  機動力={ws.Early.MobWeight,3}  " +
+                          $"安定石={ws.Early.StaWeight,3}  駒数差={ws.Early.DiffWeight,3}  " +
+                          $"パリティ={ws.Early.ParityWeight,3}  フロンティア={ws.Early.FrontierWeight,3}  " +
+                          $"潜在機動力={ws.Early.PotMobWeight,3}");
+        Console.WriteLine($"中盤: 位置={ws.Mid.PosWeight,3}  機動力={ws.Mid.MobWeight,3}  " +
+                          $"安定石={ws.Mid.StaWeight,3}  駒数差={ws.Mid.DiffWeight,3}  " +
+                          $"パリティ={ws.Mid.ParityWeight,3}  フロンティア={ws.Mid.FrontierWeight,3}  " +
+                          $"潜在機動力={ws.Mid.PotMobWeight,3}");
         Console.WriteLine("位置評価テーブル:");
         for (int r = 0; r < 8; r++)
         {

@@ -174,8 +174,21 @@ public class Othello
             _ => AIStrength.normal
         };
 
+        Console.WriteLine("学習アルゴリズムを選択してください: ヒルクライミング(1) 焼きなまし法(2)  [デフォルト: 焼きなまし法]");
+        string algoChoice = Console.ReadLine() ?? "";
+
         Console.Clear();
-        HillClimbTrainer.Run(maxIter, gamesPerEval, trainStrength);
+        if (algoChoice == "1")
+        {
+            HillClimbTrainer.Run(maxIter, gamesPerEval, trainStrength);
+        }
+        else
+        {
+            Console.WriteLine("初期温度 T0 を入力してください（デフォルト: 5.0 石）:");
+            Console.WriteLine("  ※大きいほど序盤に広く探索。推奨範囲: 3〜10");
+            double t0 = double.TryParse(Console.ReadLine(), out double tv) && tv > 0 ? tv : 5.0;
+            SATrainer.Run(maxIter, gamesPerEval, trainStrength, t0);
+        }
     }
 
     /// <summary>

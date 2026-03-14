@@ -12,16 +12,19 @@ public struct EvalDetail
     public int StoneDiff;     // 駒数差
     public int Parity;          // パリティ (+1=有利, -1=不利)
     public int Frontier;        // フロンティアスコア（相手フロンティア多-自分フロンティア多 を正規化）
+    public int PotMob;          // ポテンシャル機動力（将来の合法手数の推定、正規化）
     public int PosWeight;       // 位置評価の重み
     public int MobWeight;       // 機動力の重み
     public int StaWeight;       // 安定石の重み
     public int DiffWeight;      // 駒数差の重み
     public int ParityWeight;    // パリティの重み
     public int FrontierWeight;  // フロンティアの重み
+    public int PotMobWeight;    // ポテンシャル機動力の重み
 
     public int Total => Position * PosWeight + Mobility * MobWeight
                       + Stability * StaWeight + StoneDiff * DiffWeight
-                      + Parity * ParityWeight + Frontier * FrontierWeight;
+                      + Parity * ParityWeight + Frontier * FrontierWeight
+                      + PotMob * PotMobWeight;
 
     public override string ToString()
         => $"位置={Position}×{PosWeight}={Position * PosWeight}  "
@@ -30,6 +33,7 @@ public struct EvalDetail
          + $"駒数差={StoneDiff}×{DiffWeight}={StoneDiff * DiffWeight}  "
          + $"パリティ={Parity}×{ParityWeight}={Parity * ParityWeight}  "
          + $"フロンティア={Frontier}×{FrontierWeight}={Frontier * FrontierWeight}  "
+         + $"潜在機動力={PotMob}×{PotMobWeight}={PotMob * PotMobWeight}  "
          + $"合計={Total}";
 }
 
@@ -38,6 +42,36 @@ public struct EvalDetail
 /// </summary>
 public class OthelloAI
 {
+    // D1対角線マスク（col-row = k、インデックス k+7 = 0..14）
+    // D2対角線マスク（col+row = k、インデックス k = 0..14）
+    private static readonly ulong[] s_diagD1Masks = new ulong[15];
+    private static readonly ulong[] s_diagD2Masks = new ulong[15];
+
+    static OthelloAI()
+    {
+        // D1: 左上→右下方向（col - row = 一定）
+        for (int k = -7; k <= 7; k++)
+        {
+            ulong mask = 0UL;
+            for (int r = 0; r < 8; r++)
+            {
+                int c = r + k;
+                if (c >= 0 && c < 8) mask |= 1UL << (r * 8 + c);
+            }
+            s_diagD1Masks[k + 7] = mask;
+        }
+        // D2: 右上→左下方向（col + row = 一定）
+        for (int k = 0; k <= 14; k++)
+        {
+            ulong mask = 0UL;
+            for (int r = 0; r < 8; r++)
+            {
+                int c = k - r;
+                if (c >= 0 && c < 8) mask |= 1UL << (r * 8 + c);
+            }
+            s_diagD2Masks[k] = mask;
+        }
+    }
     private readonly WeightSet _weights;
     private readonly int[] _positionTable;
 
@@ -307,10 +341,21 @@ public class OthelloAI
             }
             else
             {
-                // null window 探索（PVS）
+                // LMR（Late Move Reductions）:
+                // Move Ordering で後半の手（TT/Killer以外）は外れの可能性が高い。
+                // depth-2 で Null Window 探索し、alpha を超えた場合のみ full depth で再探索する。
+                // 条件: depth>=3 かつ insertPos（TT/Killer枠）より後の手
                 int dummy = -1;
-                score = -NegaScout(next, depth - 1, -alpha - 1, -alpha, ref dummy);
-                // null windowを超えた場合のみ再探索
+                bool canLMR = depth >= 3 && i >= Math.Max(2, insertPos);
+                int lmrDepth = canLMR ? depth - 2 : depth - 1;
+
+                score = -NegaScout(next, lmrDepth, -alpha - 1, -alpha, ref dummy);
+
+                // LMR で alpha を超えた → full depth の Null Window で再確認
+                if (canLMR && score > alpha)
+                    score = -NegaScout(next, depth - 1, -alpha - 1, -alpha, ref dummy);
+
+                // PVS再探索: Null Window を超えた場合のみ（この手が PV 候補）
                 if (score > alpha && score < beta)
                 {
                     _pvsResearchCount++;
@@ -444,6 +489,19 @@ public class OthelloAI
         for (int i = 0; i < moveCount; i++)
         {
             BitBoard next = board.DoMove(moves[i]);
+
+            // ETC（Enhanced Transposition Cutoff）:
+            // 子局面の置換表を事前確認し、βカット可能なら即座に枝刈りする。
+            // 子のUpperBound S ≤ -beta → 子の真値 ≤ S ≤ -beta → 親は ≥ beta（βカット）
+            ulong childHash = _tt.ComputeHash(next);
+            if (_tt.TryGetRaw(childHash, out TTEntryType childType, out int childRawScore)
+                && childType == TTEntryType.UpperBound && childRawScore <= -beta)
+            {
+                _abCutCount++;
+                _tt.Store(hash, 64, beta, alpha, beta, moves[i]);
+                return beta;
+            }
+
             _recursionsCount++;
 
             int score;
@@ -513,12 +571,14 @@ public class OthelloAI
             detail.StoneDiff = board.PlayerCount - board.OpponentCount;
             detail.Parity    = board.EmptyCount % 2 == 1 ? 1 : -1;
             detail.Frontier  = FrontierScore(board);
+            detail.PotMob    = PotentialMobilityScore(board);
             detail.PosWeight      = _weights.Mid.PosWeight;
             detail.MobWeight      = _weights.Mid.MobWeight;
             detail.StaWeight      = _weights.Mid.StaWeight;
             detail.DiffWeight     = _weights.Mid.DiffWeight;
             detail.ParityWeight   = _weights.Mid.ParityWeight;
             detail.FrontierWeight = _weights.Mid.FrontierWeight;
+            detail.PotMobWeight   = _weights.Mid.PotMobWeight;
         }
         else // 序盤: 位置と安定石を重視。序盤の駒数差は終盤で容易に逆転されるため無視
         {
@@ -528,12 +588,14 @@ public class OthelloAI
             detail.StoneDiff = board.PlayerCount - board.OpponentCount;
             detail.Parity    = board.EmptyCount % 2 == 1 ? 1 : -1;
             detail.Frontier  = FrontierScore(board);
+            detail.PotMob    = PotentialMobilityScore(board);
             detail.PosWeight      = _weights.Early.PosWeight;
             detail.MobWeight      = _weights.Early.MobWeight;
             detail.StaWeight      = _weights.Early.StaWeight;
             detail.DiffWeight     = _weights.Early.DiffWeight;
             detail.ParityWeight   = _weights.Early.ParityWeight;
             detail.FrontierWeight = _weights.Early.FrontierWeight;
+            detail.PotMobWeight   = _weights.Early.PotMobWeight;
         }
 
         return detail.Total;
@@ -612,6 +674,48 @@ public class OthelloAI
         int total = myFrontier + oppFrontier;
         // 自分のフロンティアが少ないほど正の値（有利）
         return total == 0 ? 0 : 100 * (oppFrontier - myFrontier) / total;
+    }
+
+    /// <summary>
+    /// ポテンシャル機動力評価: 将来の合法手数の推定値。
+    /// 空きマスに隣接する相手の石（= 自分が将来打てる領域）と
+    /// 空きマスに隣接する自分の石（= 相手が将来打てる領域）の差を正規化した値。
+    /// 実際のGetMoves()より安価で、MobilityScoreの将来情報として補完的に機能する。
+    /// </summary>
+    private static int PotentialMobilityScore(BitBoard board)
+    {
+        ulong empty = ~(board.Player | board.Opponent);
+        const ulong NotAFile = 0xFEFEFEFEFEFEFEFEUL;
+        const ulong NotHFile = 0x7F7F7F7F7F7F7F7FUL;
+
+        // 自分の潜在機動力: 空きマスに隣接する相手の石の周辺の空きマス
+        ulong oppExp = 0UL;
+        ulong opp = board.Opponent;
+        oppExp |= opp << 8;
+        oppExp |= opp >> 8;
+        oppExp |= (opp & NotHFile) << 1;
+        oppExp |= (opp & NotAFile) >> 1;
+        oppExp |= (opp & NotHFile) << 9;
+        oppExp |= (opp & NotAFile) << 7;
+        oppExp |= (opp & NotHFile) >> 7;
+        oppExp |= (opp & NotAFile) >> 9;
+        int myPotential = BitOperations.PopCount(oppExp & empty);
+
+        // 相手の潜在機動力: 空きマスに隣接する自分の石の周辺の空きマス
+        ulong pExp = 0UL;
+        ulong p = board.Player;
+        pExp |= p << 8;
+        pExp |= p >> 8;
+        pExp |= (p & NotHFile) << 1;
+        pExp |= (p & NotAFile) >> 1;
+        pExp |= (p & NotHFile) << 9;
+        pExp |= (p & NotAFile) << 7;
+        pExp |= (p & NotHFile) >> 7;
+        pExp |= (p & NotAFile) >> 9;
+        int oppPotential = BitOperations.PopCount(pExp & empty);
+
+        int total = myPotential + oppPotential;
+        return total == 0 ? 0 : 100 * (myPotential - oppPotential) / total;
     }
 
     /// <summary>
@@ -718,6 +822,81 @@ public class OthelloAI
                         ulong df = colStableO;
                         for (int i = 0; i < 7; i++) df |= colOpp & ((df >> 8) & colMask);
                         newStableOpp |= uf & df;
+                    }
+                }
+            }
+
+            // D1対角線（↘↖方向、shift±9）の安定石伝播
+            // D1上でlf(↘方向)とrf(↖方向)の両端に安定石があれば安定
+            const ulong NotAFile = 0xFEFEFEFEFEFEFEFEUL;
+            const ulong NotHFile = 0x7F7F7F7F7F7F7F7FUL;
+            for (int ki = 0; ki < 15; ki++)
+            {
+                ulong diagMask = s_diagD1Masks[ki];
+                ulong diagAll  = all  & diagMask;
+                ulong diagMine = mine & diagMask;
+                ulong diagOpp  = opp  & diagMask;
+                ulong diagStM  = stableMine & diagMask;
+                ulong diagStO  = stableOpp  & diagMask;
+
+                if (diagAll == diagMask)
+                {
+                    newStableMine |= diagMine;
+                    newStableOpp  |= diagOpp;
+                }
+                else
+                {
+                    if (diagStM != 0)
+                    {
+                        ulong lf = diagStM;
+                        for (int ii = 0; ii < 7; ii++) lf |= diagMine & ((lf & NotHFile) << 9); // ↘
+                        ulong rf = diagStM;
+                        for (int ii = 0; ii < 7; ii++) rf |= diagMine & ((rf & NotAFile) >> 9); // ↖
+                        newStableMine |= lf & rf;
+                    }
+                    if (diagStO != 0)
+                    {
+                        ulong lf = diagStO;
+                        for (int ii = 0; ii < 7; ii++) lf |= diagOpp & ((lf & NotHFile) << 9);
+                        ulong rf = diagStO;
+                        for (int ii = 0; ii < 7; ii++) rf |= diagOpp & ((rf & NotAFile) >> 9);
+                        newStableOpp |= lf & rf;
+                    }
+                }
+            }
+
+            // D2対角線（↙↗方向、shift±7）の安定石伝播
+            for (int ki = 0; ki < 15; ki++)
+            {
+                ulong diagMask = s_diagD2Masks[ki];
+                ulong diagAll  = all  & diagMask;
+                ulong diagMine = mine & diagMask;
+                ulong diagOpp  = opp  & diagMask;
+                ulong diagStM  = stableMine & diagMask;
+                ulong diagStO  = stableOpp  & diagMask;
+
+                if (diagAll == diagMask)
+                {
+                    newStableMine |= diagMine;
+                    newStableOpp  |= diagOpp;
+                }
+                else
+                {
+                    if (diagStM != 0)
+                    {
+                        ulong lf = diagStM;
+                        for (int ii = 0; ii < 7; ii++) lf |= diagMine & ((lf & NotAFile) << 7); // ↙
+                        ulong rf = diagStM;
+                        for (int ii = 0; ii < 7; ii++) rf |= diagMine & ((rf & NotHFile) >> 7); // ↗
+                        newStableMine |= lf & rf;
+                    }
+                    if (diagStO != 0)
+                    {
+                        ulong lf = diagStO;
+                        for (int ii = 0; ii < 7; ii++) lf |= diagOpp & ((lf & NotAFile) << 7);
+                        ulong rf = diagStO;
+                        for (int ii = 0; ii < 7; ii++) rf |= diagOpp & ((rf & NotHFile) >> 7);
+                        newStableOpp |= lf & rf;
                     }
                 }
             }
