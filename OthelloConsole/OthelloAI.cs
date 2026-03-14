@@ -90,7 +90,7 @@ public class OthelloAI
             AIStrength.Beginner => 3,
             AIStrength.normal => 6,
             AIStrength.expert => 10,
-            AIStrength.professional => 16,
+            AIStrength.professional => 14,
             _ => 6
         };
 
