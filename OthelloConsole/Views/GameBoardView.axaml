@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:OthelloConsole.ViewModels"
+             x:Class="OthelloConsole.Views.GameBoardView">
+
+  <Border Background="#0f4025"
+          Padding="6"
+          CornerRadius="4"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center">
+
+    <ItemsControl ItemsSource="{Binding Cells}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <UniformGrid Rows="8" Columns="8" />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+
+      <ItemsControl.ItemTemplate>
+        <DataTemplate DataType="{x:Type vm:CellViewModel}">
+          <Button Width="58" Height="58"
+                  Padding="0"
+                  Command="{Binding DataContext.CellClickCommand,
+                            RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                  CommandParameter="{Binding}"
+                  Background="Transparent"
+                  BorderThickness="0">
+            <Border Background="{Binding IsLastMove,
+                                Converter={StaticResource LastMoveBgConverter}}"
+                    BorderBrush="#0a3a1a"
+                    BorderThickness="1"
+                    CornerRadius="2">
+              <Grid>
+                <!-- 石 -->
+                <Ellipse Margin="5"
+                         Fill="{Binding Value, Converter={StaticResource PieceColorConverter}}"
+                         IsVisible="{Binding Value, Converter={StaticResource HasPieceConverter}}" />
+
+                <!-- 有効手マーカー（半透明の小円） -->
+                <Ellipse Width="16" Height="16"
+                         Fill="#55FFFFFF"
+                         IsVisible="{Binding IsValidMove}" />
+              </Grid>
+            </Border>
+          </Button>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </Border>
+</UserControl>

@@ -1,0 +1,134 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:OthelloConsole.ViewModels"
+        xmlns:views="clr-namespace:OthelloConsole.Views"
+        x:Class="OthelloConsole.Views.MainWindow"
+        Title="オセロ"
+        Width="950" Height="540"
+        MinWidth="760" MinHeight="500"
+        Background="#121212"
+        x:DataType="vm:MainWindowViewModel">
+
+  <Grid ColumnDefinitions="*,230" Margin="8">
+
+    <!-- ─── 左: ゲーム盤面 ─── -->
+    <views:GameBoardView Grid.Column="0"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center" />
+
+    <!-- ─── 右: コントロールパネル ─── -->
+    <ScrollViewer Grid.Column="1" Margin="8,0,0,0" VerticalScrollBarVisibility="Auto">
+      <StackPanel Spacing="8">
+
+        <!-- スコア表示 -->
+        <Border Background="#1e1e1e" CornerRadius="6" Padding="12">
+          <Grid ColumnDefinitions="*,*">
+            <!-- 黒 -->
+            <StackPanel Grid.Column="0" HorizontalAlignment="Center" Spacing="4">
+              <Ellipse Width="32" Height="32" Fill="Black"
+                       Stroke="White" StrokeThickness="1" />
+              <TextBlock Text="黒" HorizontalAlignment="Center"
+                         Foreground="#cccccc" FontSize="12" />
+              <TextBlock Text="{Binding BlackScore}"
+                         HorizontalAlignment="Center"
+                         FontSize="28" FontWeight="Bold" Foreground="White" />
+            </StackPanel>
+            <!-- 白 -->
+            <StackPanel Grid.Column="1" HorizontalAlignment="Center" Spacing="4">
+              <Ellipse Width="32" Height="32" Fill="White"
+                       Stroke="#555555" StrokeThickness="1" />
+              <TextBlock Text="白" HorizontalAlignment="Center"
+                         Foreground="#cccccc" FontSize="12" />
+              <TextBlock Text="{Binding WhiteScore}"
+                         HorizontalAlignment="Center"
+                         FontSize="28" FontWeight="Bold" Foreground="White" />
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <!-- ステータス表示 -->
+        <Border Background="#1e1e1e" CornerRadius="6" Padding="12">
+          <StackPanel Spacing="6">
+            <TextBlock Text="{Binding CurrentTurnText}"
+                       FontWeight="Bold" FontSize="14"
+                       Foreground="White" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding StatusMessage}"
+                       Foreground="#aaaaaa" FontSize="12"
+                       TextWrapping="Wrap" />
+            <ProgressBar IsVisible="{Binding IsAiThinking}"
+                         IsIndeterminate="True"
+                         Height="4" Margin="0,4,0,0" />
+          </StackPanel>
+        </Border>
+
+        <!-- 設定パネル -->
+        <Border Background="#1e1e1e" CornerRadius="6" Padding="12">
+          <StackPanel Spacing="10">
+            <TextBlock Text="ゲーム設定" Foreground="#888888"
+                       FontSize="11" FontWeight="Bold" />
+
+            <!-- ゲームモード -->
+            <StackPanel Spacing="4">
+              <TextBlock Text="モード" Foreground="#cccccc" FontSize="12" />
+              <ComboBox ItemsSource="{Binding GameModes}"
+                        SelectedItem="{Binding SelectedGameMode}"
+                        HorizontalAlignment="Stretch">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding Converter={StaticResource GameModeConverter}}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+
+            <!-- 先後選択（AI対戦時のみ） -->
+            <StackPanel Spacing="6"
+                        IsVisible="{Binding SelectedGameMode,
+                                    Converter={StaticResource IsPvAiConverter}}">
+              <TextBlock Text="あなたの手番" Foreground="#cccccc" FontSize="12" />
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <RadioButton Content="先攻（黒）"
+                             IsChecked="{Binding IsPlayerFirst}"
+                             GroupName="TurnOrder"
+                             Foreground="#cccccc" />
+                <RadioButton Content="後攻（白）"
+                             IsChecked="{Binding IsPlayerFirst, Converter={x:Static BoolConverters.Not}}"
+                             GroupName="TurnOrder"
+                             Foreground="#cccccc" />
+              </StackPanel>
+            </StackPanel>
+
+            <!-- AI強度（AIが絡むモードのみ） -->
+            <StackPanel Spacing="4"
+                        IsVisible="{Binding SelectedGameMode,
+                                    Converter={StaticResource HasAiConverter}}">
+              <TextBlock Text="AI 強さ" Foreground="#cccccc" FontSize="12" />
+              <ComboBox ItemsSource="{Binding AiStrengths}"
+                        SelectedItem="{Binding SelectedAiStrength}"
+                        HorizontalAlignment="Stretch">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding Converter={StaticResource AiStrengthConverter}}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+
+            <!-- 開始ボタン -->
+            <Button Content="ゲーム開始"
+                    Command="{Binding NewGameCommand}"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
+                    Padding="0,10"
+                    FontSize="14"
+                    FontWeight="Bold"
+                    Background="#2a7a4a"
+                    Foreground="White"
+                    CornerRadius="4" />
+          </StackPanel>
+        </Border>
+
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</Window>
