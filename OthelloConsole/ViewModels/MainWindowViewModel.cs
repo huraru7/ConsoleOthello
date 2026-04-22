@@ -23,15 +23,27 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private bool   _isGameRunning   = false;
     [ObservableProperty] private bool   _isAiThinking    = false;
 
+    // ─── パス通知 ───────────────────────────────────────────────
+    [ObservableProperty] private bool   _isPassNotification  = false;
+    [ObservableProperty] private string _passNotificationText = "";
+
+    // ─── AI 戦績（PlayervsAI 累積） ─────────────────────────────
+    [ObservableProperty] private int _playerWins   = 0;
+    [ObservableProperty] private int _playerLosses = 0;
+    [ObservableProperty] private int _playerDraws  = 0;
+
     // ─── 設定プロパティ ─────────────────────────────────────────
     [ObservableProperty] private GameMode   _selectedGameMode   = GameMode.PlayervsAI;
     [ObservableProperty] private AIStrength _selectedAiStrength = AIStrength.normal;
     [ObservableProperty] private bool       _isPlayerFirst      = true;
 
+    public bool IsPlayerVsAiMode => SelectedGameMode == GameMode.PlayervsAI;
+
     // ─── CanExecute 変更通知 ────────────────────────────────────
     partial void OnIsPlayerTurnChanged(bool value)  => CellClickCommand.NotifyCanExecuteChanged();
     partial void OnIsGameRunningChanged(bool value) => CellClickCommand.NotifyCanExecuteChanged();
     partial void OnIsAiThinkingChanged(bool value)  => CellClickCommand.NotifyCanExecuteChanged();
+    partial void OnSelectedGameModeChanged(GameMode value) => OnPropertyChanged(nameof(IsPlayerVsAiMode));
 
     // ─── コレクション ───────────────────────────────────────────
     public ObservableCollection<CellViewModel> Cells { get; } =
@@ -124,12 +136,15 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _consecutivePassCount++;
             string passer = _gameData._turnNum == 1 ? "黒" : "白";
-            StatusMessage   = $"{passer} は置ける場所がありません。パスします。";
-            CurrentTurnText = $"{passer} パス";
+            StatusMessage        = $"{passer} は置ける場所がありません。パスします。";
+            CurrentTurnText      = $"{passer} パス";
+            PassNotificationText = $"{passer} はパスします！";
+            IsPassNotification   = true;
 
             if (CheckGameOver()) return;
 
-            await Task.Delay(1200);
+            await Task.Delay(1500);
+            IsPassNotification = false;
 
             _gameData = OthelloSystem.TurnChange(_gameData);
             _gameData._turnCounter++;
@@ -190,8 +205,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (!boardFull && !doublePass) return false;
 
-        IsGameRunning = false;
-        IsPlayerTurn  = false;
+        IsPassNotification = false;
+        IsGameRunning      = false;
+        IsPlayerTurn       = false;
 
         var (black, white) = OthelloSystem.Counting(_gameData._tiles);
         BlackScore = black;
@@ -202,6 +218,17 @@ public partial class MainWindowViewModel : ViewModelBase
                       :                 "引き分け！";
         CurrentTurnText = "ゲーム終了";
         StatusMessage   = $"{result}（黒 {black} vs 白 {white}）";
+
+        if (SelectedGameMode == GameMode.PlayervsAI)
+        {
+            bool playerIsBlack = IsPlayerFirst;
+            bool playerWon  = (playerIsBlack && black > white) || (!playerIsBlack && white > black);
+            bool playerLost = (playerIsBlack && white > black) || (!playerIsBlack && black > white);
+            if      (playerWon)  PlayerWins++;
+            else if (playerLost) PlayerLosses++;
+            else                 PlayerDraws++;
+        }
+
         return true;
     }
 

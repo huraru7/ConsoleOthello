@@ -46,6 +46,23 @@
           </Grid>
         </Border>
 
+        <!-- パス通知バナー -->
+        <Border IsVisible="{Binding IsPassNotification}"
+                Background="#c2450a"
+                CornerRadius="6"
+                Padding="12,10">
+          <StackPanel HorizontalAlignment="Center" Spacing="2">
+            <TextBlock Text="{Binding PassNotificationText}"
+                       FontSize="16" FontWeight="Bold"
+                       Foreground="White"
+                       HorizontalAlignment="Center" />
+            <TextBlock Text="置ける場所がありません"
+                       FontSize="11"
+                       Foreground="#ffcca0"
+                       HorizontalAlignment="Center" />
+          </StackPanel>
+        </Border>
+
         <!-- ステータス表示 -->
         <Border Background="#1e1e1e" CornerRadius="6" Padding="12">
           <StackPanel Spacing="6">
@@ -58,6 +75,41 @@
             <ProgressBar IsVisible="{Binding IsAiThinking}"
                          IsIndeterminate="True"
                          Height="4" Margin="0,4,0,0" />
+          </StackPanel>
+        </Border>
+
+        <!-- 対AI戦績（PlayervsAI のみ表示） -->
+        <Border Background="#1e1e1e" CornerRadius="6" Padding="12"
+                IsVisible="{Binding IsPlayerVsAiMode}">
+          <StackPanel Spacing="6">
+            <TextBlock Text="対AI戦績" Foreground="#888888"
+                       FontSize="11" FontWeight="Bold" />
+            <Grid ColumnDefinitions="*,*,*">
+              <StackPanel Grid.Column="0" HorizontalAlignment="Center" Spacing="2">
+                <TextBlock Text="{Binding PlayerWins}"
+                           FontSize="22" FontWeight="Bold"
+                           Foreground="#4ade80"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="勝" FontSize="11" Foreground="#888888"
+                           HorizontalAlignment="Center" />
+              </StackPanel>
+              <StackPanel Grid.Column="1" HorizontalAlignment="Center" Spacing="2">
+                <TextBlock Text="{Binding PlayerLosses}"
+                           FontSize="22" FontWeight="Bold"
+                           Foreground="#f87171"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="負" FontSize="11" Foreground="#888888"
+                           HorizontalAlignment="Center" />
+              </StackPanel>
+              <StackPanel Grid.Column="2" HorizontalAlignment="Center" Spacing="2">
+                <TextBlock Text="{Binding PlayerDraws}"
+                           FontSize="22" FontWeight="Bold"
+                           Foreground="#94a3b8"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="分" FontSize="11" Foreground="#888888"
+                           HorizontalAlignment="Center" />
+              </StackPanel>
+            </Grid>
           </StackPanel>
         </Border>
 
