@@ -53,7 +53,7 @@ public static class GameRunner
                 else
                 {
                     OthelloAI currentAI = gameData._turnNum == 1 ? ai1 : ai2;
-                    (row, col) = currentAI.AI(validMoves, gameData, false);
+                    (row, col) = currentAI.AI(gameData, false);
                 }
                 PlacePiece(row, col, gameData);
                 gameData = TurnChange(gameData);

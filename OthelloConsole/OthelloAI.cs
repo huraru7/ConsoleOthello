@@ -6,13 +6,13 @@ using static OthelloDebugLog;
 /// </summary>
 public struct EvalDetail
 {
-    public int Position;      // 位置評価の生値
-    public int Mobility;      // 機動力の生値
-    public int Stability;     // 安定石の生値
-    public int StoneDiff;     // 駒数差
-    public int Parity;          // パリティ (+1=有利, -1=不利)
-    public int Frontier;        // フロンティアスコア（相手フロンティア多-自分フロンティア多 を正規化）
-    public int PotMob;          // ポテンシャル機動力（将来の合法手数の推定、正規化）
+    public int Position;   // 位置評価の生値
+    public int Mobility;   // 機動力の生値
+    public int Stability;  // 安定石の生値
+    public int StoneDiff;  // 駒数差
+    public int Parity;     // パリティ (+1=有利, -1=不利)
+    public int Frontier;   // フロンティアスコア（正規化）
+    public int PotMob;     // ポテンシャル機動力（正規化）
     public int PosWeight;       // 位置評価の重み
     public int MobWeight;       // 機動力の重み
     public int StaWeight;       // 安定石の重み
@@ -87,9 +87,9 @@ public class OthelloAI
 
     private int _maxDepth;
     private int _recursionsCount;
-    private int _abCutCount;      // αβカット発生回数
-    private int _pvsResearchCount; // PVS再探索回数
-    private bool _perfSolveTriggered; // 完全読みに移行したか
+    private int _abCutCount;           // αβカット発生回数
+    private int _pvsResearchCount;     // PVS再探索回数
+    private bool _perfSolveTriggered;  // 完全読みに移行したか
     private int _lastProgressLogNodes; // 完全読み進捗ログ用
 
     // Killer Move: 各深さで2手記録（βカットを起こした手）
@@ -109,27 +109,27 @@ public class OthelloAI
     // 評価値の無限大（FinalScore の ±Inf±石数差 表現と区別するため -1 を使う）
     private const int Inf = 1_000_000_000;
 
-    public (int x, int y) AI(List<(int x, int y)> _validMoves, MainGameData _gamedata, bool _isDebug)
+    public (int x, int y) AI(MainGameData gameData, bool isDebug)
     {
-        OthelloDebugLog._isDebug = _isDebug;
+        OthelloDebugLog._isDebug = isDebug;
         _recursionsCount = 0;
         _abCutCount = 0;
         _pvsResearchCount = 0;
         _perfSolveTriggered = false;
         _lastProgressLogNodes = 0;
-        StartAILog(_gamedata._turnCounter);
+        StartAILog(gameData._turnCounter);
 
-        _maxDepth = _gamedata._AIStrength switch
+        _maxDepth = gameData._AIStrength switch
         {
-            AIStrength.Beginner => 3,
-            AIStrength.normal => 6,
-            AIStrength.expert => 10,
-            AIStrength.professional => 14,
-            _ => 6
+            AIStrength.Beginner     => 3,
+            AIStrength.Normal       => 6,
+            AIStrength.Expert       => 10,
+            AIStrength.Professional => 14,
+            _                       => 6
         };
 
-        BitBoard board = BitBoard.FromMainGameData(_gamedata);
-        InfoLog($"AI思考開始 ({_gamedata._AIStrength}: 深さ{_maxDepth}  残りマス={board.EmptyCount})");
+        BitBoard board = BitBoard.FromMainGameData(gameData);
+        InfoLog($"AI思考開始 ({gameData._AIStrength}: 深さ{_maxDepth}  残りマス={board.EmptyCount})");
         _tt.Clear();
 
         // Killer Move テーブル初期化
@@ -140,10 +140,8 @@ public class OthelloAI
         Array.Clear(_historyTable, 0, 64);
 
         int bestMove = -1;
-        EvalDetail bestDetail = default;
         int prevScore = 0; // Aspiration Window 用（前の深さのスコア）
 
-        // 反復深化
         for (int depth = 1; depth <= _maxDepth; depth++)
         {
             // ルートが完全読み閾値以下なら完全読みを直接実行（NegaScout途中からの完全読みを防ぐ）
@@ -163,7 +161,6 @@ public class OthelloAI
                 break;
             }
 
-            // History Heuristic 老化（深さが進むたびに半減）
             for (int i = 0; i < 64; i++) _historyTable[i] >>= 1;
 
             int iterBest = -1;
@@ -197,18 +194,15 @@ public class OthelloAI
 
             if (iterBest >= 0) bestMove = iterBest;
 
-            // 反復深化の進捗表示（InfoLog: デバッグOFFでも表示）
             InfoLog($"深さ {depth,2} 完了: 最善手={BitBoard.BitToCoord(bestMove)}  スコア={score,10}  ノード={_recursionsCount}");
         }
 
-        // 最善手の評価内訳をデバッグ表示（完全読みの場合は中間状態の評価は意味が薄いので省略）
         if (bestMove >= 0 && !_perfSolveTriggered)
         {
-            BitBoardEvaluate(board.DoMove(bestMove), out bestDetail);
+            BitBoardEvaluate(board.DoMove(bestMove), out EvalDetail bestDetail);
             DebugLog($"評価内訳(最善手{BitBoard.BitToCoord(bestMove)}, AI視点): 位置={-bestDetail.Position * bestDetail.PosWeight}  機動力={-bestDetail.Mobility * bestDetail.MobWeight}  安定石={-bestDetail.Stability * bestDetail.StaWeight}  駒数差={-bestDetail.StoneDiff * bestDetail.DiffWeight}  合計={-bestDetail.Total}");
         }
 
-        // 探索統計
         DebugLog($"探索統計: αβカット={_abCutCount}  PVS再探索={_pvsResearchCount}  完全読み={(_perfSolveTriggered ? "あり" : "なし")}");
         DebugLog($"置換表: ヒット={_tt.HitCount} ({_tt.HitRate:F1}%)  ミス={_tt.MissCount}");
 
@@ -601,8 +595,6 @@ public class OthelloAI
         return detail.Total;
     }
 
-    // 位置評価テーブルは _positionTable（WeightSetから注入）を使用
-
     private int PositionScore(BitBoard board)
     {
         int score = 0;
@@ -916,7 +908,7 @@ public class OthelloAI
 public enum AIStrength
 {
     Beginner,
-    normal,
-    expert,
-    professional
+    Normal,
+    Expert,
+    Professional
 }

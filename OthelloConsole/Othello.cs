@@ -127,17 +127,17 @@ public class Othello
                     _game._gameData._AIStrength = AIStrength.Beginner;
                     break;
                 case "2":
-                    _game._gameData._AIStrength = AIStrength.normal;
+                    _game._gameData._AIStrength = AIStrength.Normal;
                     break;
                 case "3":
-                    _game._gameData._AIStrength = AIStrength.expert;
+                    _game._gameData._AIStrength = AIStrength.Expert;
                     break;
                 case "4":
-                    _game._gameData._AIStrength = AIStrength.professional;
+                    _game._gameData._AIStrength = AIStrength.Professional;
                     break;
                 default:
                     Console.WriteLine("無効な入力です。普通モードに進みます。");
-                    _game._gameData._AIStrength = AIStrength.normal;
+                    _game._gameData._AIStrength = AIStrength.Normal;
                     break;
             }
         }
@@ -170,8 +170,8 @@ public class Othello
         AIStrength trainStrength = Console.ReadLine() switch
         {
             "1" => AIStrength.Beginner,
-            "3" => AIStrength.expert,
-            _ => AIStrength.normal
+            "3" => AIStrength.Expert,
+            _ => AIStrength.Normal
         };
 
         Console.WriteLine("学習アルゴリズムを選択してください: ヒルクライミング(1) 焼きなまし法(2)  [デフォルト: 焼きなまし法]");
@@ -228,7 +228,7 @@ public class Othello
             if (_gameData._gameTurn == GameTurn.AI)
             {
                 Console.WriteLine("=======================================================");
-                (int x, int y) = _ai.AI(_validMoves, _gameData, _isDebug);
+                (int x, int y) = _ai.AI(_gameData, _isDebug);
                 Console.WriteLine($"AIの手{x},{y}を選択しました。");
                 input = $"{x}{y}";
 

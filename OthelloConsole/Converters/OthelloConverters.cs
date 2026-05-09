@@ -25,9 +25,9 @@ public class AiStrengthConverter : IValueConverter
         => value is AIStrength s ? s switch
         {
             AIStrength.Beginner     => "初心者",
-            AIStrength.normal       => "普通",
-            AIStrength.expert       => "上級者",
-            AIStrength.professional => "プロ",
+            AIStrength.Normal       => "普通",
+            AIStrength.Expert       => "上級者",
+            AIStrength.Professional => "プロ",
             _                       => value.ToString()
         } : null;
 

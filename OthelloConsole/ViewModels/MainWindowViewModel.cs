@@ -34,7 +34,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     // ─── 設定プロパティ ─────────────────────────────────────────
     [ObservableProperty] private GameMode   _selectedGameMode   = GameMode.PlayervsAI;
-    [ObservableProperty] private AIStrength _selectedAiStrength = AIStrength.normal;
+    [ObservableProperty] private AIStrength _selectedAiStrength = AIStrength.Normal;
     [ObservableProperty] private bool       _isPlayerFirst      = true;
 
     public bool IsPlayerVsAiMode => SelectedGameMode == GameMode.PlayervsAI;
@@ -182,8 +182,7 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             var snapshot = _gameData.Clone();
-            var moves    = _validMoves.ToList();
-            aiMove = await Task.Run(() => _ai.AI(moves, snapshot, _isDebug: false));
+            aiMove = await Task.Run(() => _ai.AI(snapshot, isDebug: false));
         }
         finally
         {
