@@ -121,11 +121,11 @@ public class OthelloAI
 
         _maxDepth = gameData._AIStrength switch
         {
-            AIStrength.Beginner     => 3,
-            AIStrength.Normal       => 6,
-            AIStrength.Expert       => 10,
+            AIStrength.Beginner => 3,
+            AIStrength.Normal => 6,
+            AIStrength.Expert => 10,
             AIStrength.Professional => 14,
-            _                       => 6
+            _ => 6
         };
 
         BitBoard board = BitBoard.FromMainGameData(gameData);
@@ -464,15 +464,15 @@ public class OthelloAI
             for (int k = sortStart + 1; k < moveCount; k++)
             {
                 int keyMove = moves[k];
-                int keyMob  = mobBuffer[k];
+                int keyMob = mobBuffer[k];
                 int j = k - 1;
                 while (j >= sortStart && mobBuffer[j] > keyMob)
                 {
-                    moves[j + 1]    = moves[j];
+                    moves[j + 1] = moves[j];
                     mobBuffer[j + 1] = mobBuffer[j];
                     j--;
                 }
-                moves[j + 1]    = keyMove;
+                moves[j + 1] = keyMove;
                 mobBuffer[j + 1] = keyMob;
             }
         }
@@ -559,37 +559,37 @@ public class OthelloAI
         }
         else if (total >= 20) // 中盤: バランス型。安定石・位置・機動力・駒数差を総合評価
         {
-            detail.Position  = PositionScore(board);
-            detail.Mobility  = MobilityScore(board);
+            detail.Position = PositionScore(board);
+            detail.Mobility = MobilityScore(board);
             detail.Stability = StabilityScore(board);
             detail.StoneDiff = board.PlayerCount - board.OpponentCount;
-            detail.Parity    = board.EmptyCount % 2 == 1 ? 1 : -1;
-            detail.Frontier  = FrontierScore(board);
-            detail.PotMob    = PotentialMobilityScore(board);
-            detail.PosWeight      = _weights.Mid.PosWeight;
-            detail.MobWeight      = _weights.Mid.MobWeight;
-            detail.StaWeight      = _weights.Mid.StaWeight;
-            detail.DiffWeight     = _weights.Mid.DiffWeight;
-            detail.ParityWeight   = _weights.Mid.ParityWeight;
+            detail.Parity = board.EmptyCount % 2 == 1 ? 1 : -1;
+            detail.Frontier = FrontierScore(board);
+            detail.PotMob = PotentialMobilityScore(board);
+            detail.PosWeight = _weights.Mid.PosWeight;
+            detail.MobWeight = _weights.Mid.MobWeight;
+            detail.StaWeight = _weights.Mid.StaWeight;
+            detail.DiffWeight = _weights.Mid.DiffWeight;
+            detail.ParityWeight = _weights.Mid.ParityWeight;
             detail.FrontierWeight = _weights.Mid.FrontierWeight;
-            detail.PotMobWeight   = _weights.Mid.PotMobWeight;
+            detail.PotMobWeight = _weights.Mid.PotMobWeight;
         }
         else // 序盤: 位置と安定石を重視。序盤の駒数差は終盤で容易に逆転されるため無視
         {
-            detail.Position  = PositionScore(board);
-            detail.Mobility  = MobilityScore(board);
+            detail.Position = PositionScore(board);
+            detail.Mobility = MobilityScore(board);
             detail.Stability = StabilityScore(board);
             detail.StoneDiff = board.PlayerCount - board.OpponentCount;
-            detail.Parity    = board.EmptyCount % 2 == 1 ? 1 : -1;
-            detail.Frontier  = FrontierScore(board);
-            detail.PotMob    = PotentialMobilityScore(board);
-            detail.PosWeight      = _weights.Early.PosWeight;
-            detail.MobWeight      = _weights.Early.MobWeight;
-            detail.StaWeight      = _weights.Early.StaWeight;
-            detail.DiffWeight     = _weights.Early.DiffWeight;
-            detail.ParityWeight   = _weights.Early.ParityWeight;
+            detail.Parity = board.EmptyCount % 2 == 1 ? 1 : -1;
+            detail.Frontier = FrontierScore(board);
+            detail.PotMob = PotentialMobilityScore(board);
+            detail.PosWeight = _weights.Early.PosWeight;
+            detail.MobWeight = _weights.Early.MobWeight;
+            detail.StaWeight = _weights.Early.StaWeight;
+            detail.DiffWeight = _weights.Early.DiffWeight;
+            detail.ParityWeight = _weights.Early.ParityWeight;
             detail.FrontierWeight = _weights.Early.FrontierWeight;
-            detail.PotMobWeight   = _weights.Early.PotMobWeight;
+            detail.PotMobWeight = _weights.Early.PotMobWeight;
         }
 
         return detail.Total;
@@ -623,7 +623,7 @@ public class OthelloAI
         {
             if (((all >> corner) & 1) == 1) // コーナーが埋まっている
             {
-                if (((board.Player >> xSq) & 1) == 1)   score += XSquareCorrection;
+                if (((board.Player >> xSq) & 1) == 1) score += XSquareCorrection;
                 if (((board.Opponent >> xSq) & 1) == 1) score -= XSquareCorrection;
             }
         }
@@ -661,7 +661,7 @@ public class OthelloAI
         adj |= (empty & NotHFile) >> 7;  // 右上
         adj |= (empty & NotAFile) >> 9;  // 左上
 
-        int myFrontier  = BitOperations.PopCount(adj & board.Player);
+        int myFrontier = BitOperations.PopCount(adj & board.Player);
         int oppFrontier = BitOperations.PopCount(adj & board.Opponent);
         int total = myFrontier + oppFrontier;
         // 自分のフロンティアが少ないほど正の値（有利）
@@ -727,13 +727,13 @@ public class OthelloAI
     private static (int myStable, int oppStable) CountStableBoth(ulong mine, ulong opp)
     {
         ulong stableMine = 0UL;
-        ulong stableOpp  = 0UL;
+        ulong stableOpp = 0UL;
         ulong all = mine | opp;
 
         // コーナー（確定的に安定）を起点にする
         ulong corners = 0x8100000000000081UL;
         stableMine |= corners & mine;
-        stableOpp  |= corners & opp;
+        stableOpp |= corners & opp;
 
         if (stableMine == 0 && stableOpp == 0) return (0, 0);
 
@@ -742,23 +742,23 @@ public class OthelloAI
         {
             changed = false;
             ulong newStableMine = stableMine;
-            ulong newStableOpp  = stableOpp;
+            ulong newStableOpp = stableOpp;
 
             // 行方向（水平）の安定石伝播
             for (int row = 0; row < 8; row++)
             {
-                ulong rowMask    = 0xFFUL << (row * 8);
-                ulong rowAll     = all  & rowMask;
-                ulong rowMine    = mine & rowMask;
-                ulong rowOpp     = opp  & rowMask;
+                ulong rowMask = 0xFFUL << (row * 8);
+                ulong rowAll = all & rowMask;
+                ulong rowMine = mine & rowMask;
+                ulong rowOpp = opp & rowMask;
                 ulong rowStableM = stableMine & rowMask;
-                ulong rowStableO = stableOpp  & rowMask;
+                ulong rowStableO = stableOpp & rowMask;
 
                 if (rowAll == rowMask)
                 {
                     // 行が全て埋まっている場合は全ての自石・相手石が安定
                     newStableMine |= rowMine;
-                    newStableOpp  |= rowOpp;
+                    newStableOpp |= rowOpp;
                 }
                 else
                 {
@@ -785,17 +785,17 @@ public class OthelloAI
             // 列方向（垂直）の安定石伝播
             for (int col = 0; col < 8; col++)
             {
-                ulong colMask    = 0x0101010101010101UL << col;
-                ulong colAll     = all  & colMask;
-                ulong colMine    = mine & colMask;
-                ulong colOpp     = opp  & colMask;
+                ulong colMask = 0x0101010101010101UL << col;
+                ulong colAll = all & colMask;
+                ulong colMine = mine & colMask;
+                ulong colOpp = opp & colMask;
                 ulong colStableM = stableMine & colMask;
-                ulong colStableO = stableOpp  & colMask;
+                ulong colStableO = stableOpp & colMask;
 
                 if (colAll == colMask)
                 {
                     newStableMine |= colMine;
-                    newStableOpp  |= colOpp;
+                    newStableOpp |= colOpp;
                 }
                 else
                 {
@@ -825,16 +825,16 @@ public class OthelloAI
             for (int ki = 0; ki < 15; ki++)
             {
                 ulong diagMask = s_diagD1Masks[ki];
-                ulong diagAll  = all  & diagMask;
+                ulong diagAll = all & diagMask;
                 ulong diagMine = mine & diagMask;
-                ulong diagOpp  = opp  & diagMask;
-                ulong diagStM  = stableMine & diagMask;
-                ulong diagStO  = stableOpp  & diagMask;
+                ulong diagOpp = opp & diagMask;
+                ulong diagStM = stableMine & diagMask;
+                ulong diagStO = stableOpp & diagMask;
 
                 if (diagAll == diagMask)
                 {
                     newStableMine |= diagMine;
-                    newStableOpp  |= diagOpp;
+                    newStableOpp |= diagOpp;
                 }
                 else
                 {
@@ -861,16 +861,16 @@ public class OthelloAI
             for (int ki = 0; ki < 15; ki++)
             {
                 ulong diagMask = s_diagD2Masks[ki];
-                ulong diagAll  = all  & diagMask;
+                ulong diagAll = all & diagMask;
                 ulong diagMine = mine & diagMask;
-                ulong diagOpp  = opp  & diagMask;
-                ulong diagStM  = stableMine & diagMask;
-                ulong diagStO  = stableOpp  & diagMask;
+                ulong diagOpp = opp & diagMask;
+                ulong diagStM = stableMine & diagMask;
+                ulong diagStO = stableOpp & diagMask;
 
                 if (diagAll == diagMask)
                 {
                     newStableMine |= diagMine;
-                    newStableOpp  |= diagOpp;
+                    newStableOpp |= diagOpp;
                 }
                 else
                 {
@@ -896,7 +896,7 @@ public class OthelloAI
             if (newStableMine != stableMine || newStableOpp != stableOpp)
             {
                 stableMine = newStableMine;
-                stableOpp  = newStableOpp;
+                stableOpp = newStableOpp;
                 changed = true;
             }
         }

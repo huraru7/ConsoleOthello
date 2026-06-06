@@ -110,6 +110,16 @@
                            HorizontalAlignment="Center" />
               </StackPanel>
             </Grid>
+            <Button Content="この試合をカウントしない"
+                    Command="{Binding UndoLastResultCommand}"
+                    IsVisible="{Binding CanUndoLastResult}"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
+                    Padding="0,6"
+                    FontSize="11"
+                    Background="#2a2a2a"
+                    Foreground="#888888"
+                    CornerRadius="4" />
           </StackPanel>
         </Border>
 

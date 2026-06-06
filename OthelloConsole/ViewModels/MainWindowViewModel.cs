@@ -28,9 +28,13 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private string _passNotificationText = "";
 
     // ─── AI 戦績（PlayervsAI 累積） ─────────────────────────────
-    [ObservableProperty] private int _playerWins   = 0;
-    [ObservableProperty] private int _playerLosses = 0;
-    [ObservableProperty] private int _playerDraws  = 0;
+    private const string RecordsPath = "data/battle_records.json";
+    private enum GameResult { None, Win, Loss, Draw }
+    private GameResult _lastGameResult = GameResult.None;
+    [ObservableProperty] private int  _playerWins   = 0;
+    [ObservableProperty] private int  _playerLosses = 0;
+    [ObservableProperty] private int  _playerDraws  = 0;
+    [ObservableProperty] private bool _canUndoLastResult = false;
 
     // ─── 設定プロパティ ─────────────────────────────────────────
     [ObservableProperty] private GameMode   _selectedGameMode   = GameMode.PlayervsAI;
@@ -58,6 +62,26 @@ public partial class MainWindowViewModel : ViewModelBase
             File.Exists("weights/best_weights.json")
                 ? WeightSet.Load("weights/best_weights.json")
                 : WeightSet.Default());
+
+        var record = BattleRecord.Load(RecordsPath);
+        PlayerWins   = record.Wins;
+        PlayerLosses = record.Losses;
+        PlayerDraws  = record.Draws;
+    }
+
+    // ─── UndoLastResult コマンド ────────────────────────────────
+    [RelayCommand]
+    private void UndoLastResult()
+    {
+        switch (_lastGameResult)
+        {
+            case GameResult.Win:  PlayerWins--;   break;
+            case GameResult.Loss: PlayerLosses--; break;
+            case GameResult.Draw: PlayerDraws--;  break;
+        }
+        _lastGameResult   = GameResult.None;
+        CanUndoLastResult = false;
+        new BattleRecord { Wins = PlayerWins, Losses = PlayerLosses, Draws = PlayerDraws }.Save(RecordsPath);
     }
 
     // ─── NewGame コマンド ────────────────────────────────────────
@@ -65,7 +89,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private async Task NewGame()
     {
         _consecutivePassCount = 0;
-        _lastMove = (-1, -1);
+        _lastMove             = (-1, -1);
+        _lastGameResult       = GameResult.None;
+        CanUndoLastResult     = false;
 
         bool aiGoesFirst = SelectedGameMode == GameMode.AIvsAI
                         || (SelectedGameMode == GameMode.PlayervsAI && !IsPlayerFirst);
@@ -223,9 +249,13 @@ public partial class MainWindowViewModel : ViewModelBase
             bool playerIsBlack = IsPlayerFirst;
             bool playerWon  = (playerIsBlack && black > white) || (!playerIsBlack && white > black);
             bool playerLost = (playerIsBlack && white > black) || (!playerIsBlack && black > white);
-            if      (playerWon)  PlayerWins++;
-            else if (playerLost) PlayerLosses++;
-            else                 PlayerDraws++;
+            if      (playerWon)  { PlayerWins++;   _lastGameResult = GameResult.Win; }
+            else if (playerLost) { PlayerLosses++; _lastGameResult = GameResult.Loss; }
+            else                 { PlayerDraws++;  _lastGameResult = GameResult.Draw; }
+
+            new BattleRecord { Wins = PlayerWins, Losses = PlayerLosses, Draws = PlayerDraws }
+                .Save(RecordsPath);
+            CanUndoLastResult = true;
         }
 
         return true;
